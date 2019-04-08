@@ -1,7 +1,6 @@
 package com.github.yag.ipc.client
 
 import com.github.yag.ipc.*
-import com.github.yag.ipc.server.IPCServer
 import com.google.common.util.concurrent.SettableFuture
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
@@ -99,7 +98,7 @@ class IPCClient(
             connectFuture = SettableFuture.create<ConnectionAccepted>()
             try {
                 channel = bootstrap.connect(config.endpoint).sync().channel().also {
-                    val connectionRequest = ConnectionRequest("V1")
+                    val connectionRequest = ConnectRequest("V1")
                     if (config.headers.isNotEmpty()) {
                         connectionRequest.setHeaders(config.headers)
                     }
@@ -347,11 +346,12 @@ class IPCClient(
             if (event is IdleStateEvent) {
                 when (event.state()) {
                     IdleState.READER_IDLE, IdleState.ALL_IDLE -> {
-                        LOG.info("Heartbeat timeout.")
+                        LOG.info("Channel heartbeat timeout.")
                         ctx.channel().close()
                     }
                     IdleState.WRITER_IDLE -> {
                         if (connected.get()) {
+                            LOG.info("Send heartbeat.")
                             ctx.channel().writeAndFlush(RequestPacket.heartbeat(Heartbeat(System.currentTimeMillis()))).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
                         }
                     }
@@ -374,7 +374,7 @@ class IPCClient(
 
                 addLast(IdleStateHandler(config.heartbeatTimeoutMs, config.heartbeatIntervalMs, config.heartbeatTimeoutMs, TimeUnit.MILLISECONDS))
                 addLast(ResponseDecoder())
-                addLast(TEncoder(ConnectionRequest::class.java))
+                addLast(TEncoder(ConnectRequest::class.java))
                 addLast(TEncoder(RequestPacket::class.java))
 
                 addLast(ResponseHandler())

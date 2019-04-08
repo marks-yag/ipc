@@ -1,6 +1,6 @@
 namespace java com.github.yag.ipc
 
-struct ConnectionRequest {
+struct ConnectRequest {
 1: string version
 2: optional i64 requestTimeoutMs
 3: optional map<string, string> headers

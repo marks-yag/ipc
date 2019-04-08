@@ -97,7 +97,7 @@ class IPCServer internal constructor(
         override fun initChannel(socketChannel: SocketChannel) {
             LOG.debug("New tcp connection arrived.")
 
-            val connection = Connection()
+            val connection = Connection(UUID.randomUUID().toString())
 
             socketChannel.pipeline().apply {
                 addLast(ReadTimeoutHandler(config.maxIdleTimeMs, TimeUnit.MILLISECONDS))
@@ -122,22 +122,21 @@ class IPCServer internal constructor(
         @Volatile
         private var connected = false
 
-        private lateinit var connectionRequest: ConnectionRequest
-
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
+
             val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
 
             if (!connected) {
                 LOG.debug("Handling incoming connect request from: {}.", ctx.channel().remoteAddress())
 
-                connectionRequest = ConnectionRequest().apply { read(protocol) }
-
-                connection.id = UUID.randomUUID().toString()
                 connection.remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
                 connection.localAddress = ctx.channel().localAddress() as InetSocketAddress
+                connection.getConnectRequest = {
+                    ConnectRequest().apply { read(protocol) }
+                }
 
                 try {
-                    connectionHandler.handle(connection, connectionRequest) //TODO combine connection request to connection
+                    connectionHandler.handle(connection)
                     connected = true
                     LOG.debug("Connected, connectionId: {}, remoteAddress: {}.", connection.id, connection.remoteAddress)
                     ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.accepted(ConnectionAccepted(connection.id))))

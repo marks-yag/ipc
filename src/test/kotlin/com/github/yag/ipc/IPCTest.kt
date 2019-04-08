@@ -19,13 +19,13 @@ class IPCTest {
     fun testConnectionHandler() {
         server {
             connection {
-                add { connection, _ ->
-                    if (connection.remoteAddress.hostString != "127.0.0.1") {
-                        throw ConnectionRejectException("${connection.remoteAddress.hostString} not allowed.")
+                add {
+                    if (it.remoteAddress.hostString != "127.0.0.1") {
+                        throw ConnectionRejectException("${it.remoteAddress.hostString} not allowed.")
                     }
                 }
-                add { _, req ->
-                    if (!req.isSetHeaders || !req.headers.containsKey("token")) {
+                add {
+                    if (!it.connectRequest.isSetHeaders || !it.connectRequest.headers.containsKey("token")) {
                         throw ConnectionRejectException("A valid token was required.")
                     }
                 }
@@ -67,6 +67,20 @@ class IPCTest {
             }.use { client ->
                 doTest(client)
             }
+        }
+    }
+
+    private fun doTest(client: IPCClient) {
+        client.sendSync("foo", requestData).let {
+            assertEquals(StatusCode.OK, it.statusCode)
+        }
+
+        client.sendSync("bar", requestData).let {
+            assertEquals(StatusCode.BAD_REQUEST, it.statusCode)
+        }
+
+        client.sendSync("not-exist", requestData).let {
+            assertEquals(StatusCode.NOT_FOUND, it.statusCode)
         }
     }
 
@@ -128,6 +142,9 @@ class IPCTest {
         }
     }
 
+    /**
+     * Test requests from single client will be processed in sequence by default.
+     */
     @Test
     fun testSequence() {
         val queue = LinkedBlockingQueue<Long>()
@@ -158,6 +175,11 @@ class IPCTest {
         }
     }
 
+    /**
+     * Test in case of server close before response to client, client can:
+     * 1. Detect server was closed.
+     * 2. Let pending requests timeout.
+     */
     @Test
     fun testServerClose() {
         val server = server {
@@ -183,23 +205,9 @@ class IPCTest {
         }
     }
 
-    @Test
-    fun testClientClose() {
-        server {
-        }.use { server ->
-            server.ignoreHeartbeat = true
-            client {
-                endpoint = server.endpoint
-                heartbeatIntervalMs = 500
-                heartbeatTimeoutMs = 2000
-            }.use { client ->
-                eventually(3000) {
-                    assertFalse(client.isConnected())
-                }
-            }
-        }
-    }
-
+    /**
+     * Test in case of server can not response heartbeat(write data) in time, client can detect heartbeat timeout.
+     */
     @Test
     fun testClientSideHeartbeatTimeout() {
         server {
@@ -217,6 +225,11 @@ class IPCTest {
         }
     }
 
+    /**
+     * Test in case of client can not write data in time:
+     * 1. server can detect read timeout and kick client out.
+     * 2. client can detect connection was closed
+     */
     @Test
     fun testServerSideHeartbeatTimeout() {
         server {
@@ -236,6 +249,9 @@ class IPCTest {
         }
     }
 
+    /**
+     * Test if client do dot send requests, heartbeat will be send automatically to keep connection alive.
+     */
     @Test
     fun testClientSideHeartbeat() {
         server {
@@ -246,6 +262,7 @@ class IPCTest {
             client {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 500
+                heartbeatTimeoutMs = 1000
             }.use { client ->
                 repeat(10) {
                     assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).statusCode)
@@ -258,6 +275,9 @@ class IPCTest {
         }
     }
 
+    /**
+     * Test client can reconnect to server and make remote calls.
+     */
     @Test
     fun testClientReconnect() {
         server {
@@ -296,17 +316,4 @@ class IPCTest {
         }
     }
 
-    private fun doTest(client: IPCClient) {
-        client.sendSync("foo", requestData).let {
-            assertEquals(StatusCode.OK, it.statusCode)
-        }
-
-        client.sendSync("bar", requestData).let {
-            assertEquals(StatusCode.BAD_REQUEST, it.statusCode)
-        }
-
-        client.sendSync("not-exist", requestData).let {
-            assertEquals(StatusCode.NOT_FOUND, it.statusCode)
-        }
-    }
 }

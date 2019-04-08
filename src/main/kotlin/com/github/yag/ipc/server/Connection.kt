@@ -1,15 +1,22 @@
 package com.github.yag.ipc.server
 
+import com.github.yag.ipc.ConnectRequest
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
-class Connection {
-
-    lateinit var id: String
+class Connection(val id: String) {
 
     lateinit var localAddress: InetSocketAddress
+        internal set
 
     lateinit var remoteAddress: InetSocketAddress
+        internal set
+
+    internal lateinit var getConnectRequest: () -> ConnectRequest
+
+    val connectRequest by lazy {
+        getConnectRequest()
+    }
 
     var account: String = "default"
 
