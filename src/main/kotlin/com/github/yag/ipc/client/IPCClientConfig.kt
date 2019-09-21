@@ -26,7 +26,7 @@ class IPCClientConfig {
     var heartbeatTimeoutMs: Long = 10_000
 
     @Value
-    var maxParallelCalls: Int = 1_000_000
+    var maxParallelCalls: Int = 128
 
     @Value
     var maxParallelRequestContentSize: Int = 1024 * 1024 * 100
