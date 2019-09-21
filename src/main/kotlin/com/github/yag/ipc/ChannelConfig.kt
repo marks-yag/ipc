@@ -5,7 +5,7 @@ import com.github.yag.config.Value
 class ChannelConfig {
 
     @Value
-    var connectionTimeoutMs: Long = 20L
+    var connectionTimeoutMs: Long = 20_000L
 
     @Value
     var tcpNoDelay: Boolean = false
