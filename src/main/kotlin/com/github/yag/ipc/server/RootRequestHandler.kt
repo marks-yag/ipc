@@ -38,7 +38,7 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
     }
 
     override fun close() {
-        handlers.forEach { _, handler ->
+        handlers.forEach { (_, handler) ->
             if (handler is AutoCloseable) {
                 handler.close()
             }
