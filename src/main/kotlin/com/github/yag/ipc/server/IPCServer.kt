@@ -151,16 +151,9 @@ class IPCServer internal constructor(
                     out.add(packet.requests)
                 } else if (packet.isSetHeartbeat) {
                     if (!ignoreHeartbeat) {
-                        ctx.writeAndFlush(
-                                ResponsePacket.heartbeat(
-                                        Heartbeat(
-                                                minOf(
-                                                        packet.heartbeat.timestamp,
-                                                        System.currentTimeMillis()
-                                                )
-                                        )
-                                )
-                        )
+                        val timestamp = minOf(packet.heartbeat.timestamp, System.currentTimeMillis())
+                        val heartbeat = ResponsePacket.heartbeat(Heartbeat(timestamp))
+                        ctx.writeAndFlush(heartbeat)
                     }
                 }
             }
