@@ -45,7 +45,7 @@
         <dependency>
             <groupId>com.github.marks-yag</groupId>
             <artifactId>config</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <version>0.9.1</version>
         </dependency>
 
         <dependency>
