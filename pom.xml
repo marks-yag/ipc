@@ -5,10 +5,10 @@
 
     <groupId>com.github.marks-yag</groupId>
     <artifactId>ipc</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.9.0</version>
     <packaging>jar</packaging>
 
-    <name>com.github.marks-yag ipc</name>
+    <name>IPC</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -104,7 +104,7 @@
         <dependency>
             <groupId>com.github.marks-yag</groupId>
             <artifactId>punner-maven-plugin</artifactId>
-            <version>0.9.10-SNAPSHOT</version>
+            <version>0.9.12-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
@@ -195,7 +195,7 @@
             <plugin>
                 <groupId>com.github.marks-yag</groupId>
                 <artifactId>punner-maven-plugin</artifactId>
-                <version>0.9.10-SNAPSHOT</version>
+                <version>0.9.12-SNAPSHOT</version>
                 <configuration>
                     <overrideDefault>true</overrideDefault>
                     <parallelLevel>1c</parallelLevel>
