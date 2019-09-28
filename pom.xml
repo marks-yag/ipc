@@ -20,6 +20,14 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
+    <pluginRepositories>
+        <pluginRepository>
+            <id>jcenter</id>
+            <name>JCenter</name>
+            <url>https://jcenter.bintray.com/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
     <dependencies>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
@@ -195,7 +203,7 @@
             <plugin>
                 <groupId>com.github.marks-yag</groupId>
                 <artifactId>punner-maven-plugin</artifactId>
-                <version>0.9.12-SNAPSHOT</version>
+                <version>0.9.11</version>
                 <configuration>
                     <overrideDefault>true</overrideDefault>
                     <parallelLevel>1c</parallelLevel>
@@ -210,7 +218,91 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>2.9</version>
+            </plugin>
+
+
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.0.1</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.jetbrains.dokka</groupId>
+                        <artifactId>dokka-maven-plugin</artifactId>
+                        <version>0.9.16</version>
+                        <executions>
+                            <execution>
+                                <phase>pre-site</phase>
+                                <goals>
+                                    <goal>dokka</goal>
+                                    <goal>javadoc</goal>
+                                    <goal>javadocJar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <jdkVersion>8</jdkVersion>
+                            <skipEmptyPackages>true</skipEmptyPackages>
+                            <perPackageOptions>
+                                <packageOptions>
+                                    <prefix>kotlin</prefix>
+                                    <skipDeprecated>true</skipDeprecated>
+                                    <reportUndocumented>true</reportUndocumented>
+                                    <includeNonPublic>false</includeNonPublic>
+                                </packageOptions>
+                            </perPackageOptions>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.8</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
