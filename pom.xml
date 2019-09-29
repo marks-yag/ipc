@@ -25,6 +25,43 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
+    <scm>
+        <connection>scm:git:git://github.com/marks-yag/crypto.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/marks-yag/crypto.git</developerConnection>
+        <url>https://github.com/marks-yag/crypto</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <site>
+            <url>https://github.com/marks-yag/crypto</url>
+        </site>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
+    <developers>
+        <developer>
+            <id>marks-yag</id>
+            <name>Mark</name>
+            <email>marks.yag@gmail.com</email>
+        </developer>
+    </developers>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
     <pluginRepositories>
         <pluginRepository>
             <id>jcenter</id>
