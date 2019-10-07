@@ -246,7 +246,7 @@
             <plugin>
                 <groupId>com.github.marks-yag</groupId>
                 <artifactId>punner-maven-plugin</artifactId>
-                <version>0.9.11</version>
+                <version>0.9.13</version>
                 <configuration>
                     <overrideDefault>true</overrideDefault>
                     <parallelLevel>1c</parallelLevel>
