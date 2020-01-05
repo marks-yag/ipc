@@ -20,7 +20,7 @@
         <kotlin.version>1.3.50</kotlin.version>
         <kotlin.code.style>official</kotlin.code.style>
         <junit.version>4.12</junit.version>
-        <punner.version>0.9.13</punner.version>
+        <punner.version>0.9.14</punner.version>
 
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
