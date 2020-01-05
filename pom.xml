@@ -27,15 +27,15 @@
     </properties>
 
     <scm>
-        <connection>scm:git:git://github.com/marks-yag/crypto.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/marks-yag/crypto.git</developerConnection>
-        <url>https://github.com/marks-yag/crypto</url>
+        <connection>scm:git:git://github.com/marks-yag/ipc.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/marks-yag/ipc.git</developerConnection>
+        <url>https://github.com/marks-yag/ipc</url>
         <tag>HEAD</tag>
     </scm>
 
     <distributionManagement>
         <site>
-            <url>https://github.com/marks-yag/crypto</url>
+            <url>https://github.com/marks-yag/ipc</url>
         </site>
         <snapshotRepository>
             <id>ossrh</id>
