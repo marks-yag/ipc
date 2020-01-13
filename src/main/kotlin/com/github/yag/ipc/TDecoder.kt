@@ -11,9 +11,17 @@ import org.apache.thrift.transport.TIOStreamTransport
 class TDecoder(private val newObject: () -> TSerializable) : MessageToMessageDecoder<ByteBuf>() {
 
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
-        val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(msg)))
-        val obj = newObject().apply { read(protocol) }
-        out.add(obj)
+        out.add(decode(newObject(), msg))
+    }
+
+    companion object {
+
+        @JvmStatic
+        fun <T: TSerializable> decode(obj: T, buf: ByteBuf) : T {
+            obj.read(TBinaryProtocol(TByteBufTransport(buf)))
+            return obj
+        }
+
     }
 
 }
