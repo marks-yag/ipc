@@ -124,15 +124,13 @@ class IPCServer internal constructor(
 
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
 
-            val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
-
             if (!connected) {
                 LOG.debug("Handling incoming connect request from: {}.", ctx.channel().remoteAddress())
 
                 connection.remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
                 connection.localAddress = ctx.channel().localAddress() as InetSocketAddress
                 connection.getConnectRequest = {
-                    ConnectRequest().apply { read(protocol) }
+                    TDecoder.decode(ConnectRequest(), buf)
                 }
 
                 try {
@@ -146,7 +144,7 @@ class IPCServer internal constructor(
                     ctx.close()
                 }
             } else {
-                val packet = RequestPacket().apply { read(protocol) }
+                val packet = TDecoder.decode(RequestPacket(), buf)
                 if (packet.isSetRequests) {
                     out.add(packet.requests)
                 } else if (packet.isSetHeartbeat) {

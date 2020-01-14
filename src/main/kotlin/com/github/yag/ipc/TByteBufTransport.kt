@@ -16,19 +16,17 @@ class TByteBufTransport(private val bf: ByteBuf) : TTransport() {
     override fun open() {}
 
     override fun read(buf: ByteArray, off: Int, len: Int): Int {
-        val bytesRemaining = bf.readableBytes()
-        val amtToRead = if (len > bytesRemaining) bytesRemaining else len
-        if (amtToRead > 0) {
-            bf.readBytes(buf, off, amtToRead)
+        val rd = minOf(bf.readableBytes(), len)
+        if (rd > 0) {
+            bf.readBytes(buf, off, rd)
         }
-        return amtToRead
+        return rd
     }
 
     @Throws(TTransportException::class)
     override fun readAll(buf: ByteArray, off: Int, len: Int): Int {
-        val bytesRemaining = bf.readableBytes()
-        if (len > bytesRemaining) {
-            throw TTransportException("unexpected end of frame")
+        check (bf.readableBytes() >= len) {
+            throw TTransportException("Unexpected end of frame")
         }
         bf.readBytes(buf, off, len)
         return len
@@ -39,18 +37,18 @@ class TByteBufTransport(private val bf: ByteBuf) : TTransport() {
     }
 
     override fun getBuffer(): ByteArray? {
-        return if (!bf.hasArray()) {
-            null
-        } else {
+        return if (bf.hasArray()) {
             bf.array()
+        } else {
+            null
         }
     }
 
     override fun getBufferPosition(): Int {
         return if (bf.hasArray()) {
-            0
-        } else {
             bf.arrayOffset() + bf.readerIndex()
+        } else {
+            0
         }
     }
 
