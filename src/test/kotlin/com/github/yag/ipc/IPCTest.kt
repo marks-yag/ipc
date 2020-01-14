@@ -4,6 +4,7 @@ import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
+import java.lang.IllegalArgumentException
 import java.nio.ByteBuffer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
@@ -138,6 +139,27 @@ class IPCTest {
                     assertEquals(StatusCode.OK, it.statusCode)
                     assertEquals(1, it.callId)
                 }
+            }
+        }
+    }
+
+    @Test
+    fun testDefaultExceptionMapping() {
+        server {
+            request {
+                map("foo") {
+                    throw IllegalArgumentException()
+                }
+                map("bar") {
+                    throw NullPointerException()
+                }
+            }
+        }.use { server ->
+            client {
+                endpoint = server.endpoint
+            }.use { client ->
+                assertEquals(StatusCode.BAD_REQUEST, client.sendSync("foo", requestData).statusCode)
+                assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("bar", requestData).statusCode)
             }
         }
     }

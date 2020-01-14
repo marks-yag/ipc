@@ -1,9 +1,7 @@
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.Request
-import com.github.yag.ipc.Response
-import com.github.yag.ipc.StatusCode
-import com.github.yag.ipc.status
+import com.github.yag.ipc.*
+import java.lang.IllegalArgumentException
 import java.util.concurrent.ConcurrentHashMap
 
 class RootRequestHandler : RequestHandler, AutoCloseable {
@@ -31,7 +29,17 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
     override fun handle(connection: Connection, request: Request, echo: (Response) -> Unit) {
         val handler = handlers[request.callType]
         if (handler != null) {
-            handler.handle(connection, request, echo)
+            try {
+                handler.handle(connection, request, echo)
+            } catch (e: IllegalArgumentException) {
+                echo(request.status(StatusCode.BAD_REQUEST) {
+                    content(e.toString().toByteArray(Charsets.UTF_8))
+                })
+            } catch (e: Throwable) {
+                echo(request.status(StatusCode.INTERNAL_ERROR) {
+                    content(e.toString().toByteArray(Charsets.UTF_8))
+                })
+            }
         } else {
             echo(request.status(StatusCode.NOT_FOUND))
         }
