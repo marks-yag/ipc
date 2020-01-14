@@ -1,6 +1,7 @@
 package com.github.yag.ipc
 
 import io.netty.bootstrap.AbstractBootstrap
+import io.netty.bootstrap.Bootstrap
 import io.netty.channel.ChannelOption
 import io.netty.channel.WriteBufferWaterMark
 import java.nio.ByteBuffer
@@ -8,9 +9,11 @@ import java.util.concurrent.locks.Lock
 
 fun <T : AbstractBootstrap<*, *>> T.applyChannelConfig(config: ChannelConfig): T {
     option(ChannelOption.CONNECT_TIMEOUT_MILLIS, minOf(config.connectionTimeoutMs, Int.MAX_VALUE.toLong()).toInt())
-    option(ChannelOption.TCP_NODELAY, config.tcpNoDelay)
+    if (this is Bootstrap) {
+        option(ChannelOption.TCP_NODELAY, config.tcpNoDelay)
+        option(ChannelOption.SO_SNDBUF, config.sendBufSize)
+    }
     option(ChannelOption.SO_RCVBUF, config.recvBufSize)
-    option(ChannelOption.SO_SNDBUF, config.sendBufSize)
     option(ChannelOption.WRITE_BUFFER_WATER_MARK, WriteBufferWaterMark(config.waterMarkLow, config.waterMarkHigh))
     return this
 }
