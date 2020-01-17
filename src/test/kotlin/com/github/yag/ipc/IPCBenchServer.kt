@@ -4,6 +4,7 @@ import com.github.yag.config.ConfigLoader
 import com.github.yag.config.config
 import com.github.yag.ipc.server.IPCServerConfig
 import com.github.yag.ipc.server.server
+import io.netty.buffer.Unpooled
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
@@ -43,11 +44,7 @@ object IPCBenchServer {
         server(config) {
             request {
                 map("req") {
-                    val respSize = it.headers["resp-size"]?.toInt() ?: 0
-
-                    it.ok {
-                        setContent(Content(ByteBuffer.wrap(ByteArray(respSize))))
-                    }
+                    Packet(ResponsePacketHeader(ResponseHeader(it.header.thrift.callId, StatusCode.OK, it.header.thrift.contentLength)), Unpooled.wrappedBuffer(ByteArray(it.header.thrift.contentLength)))
                 }
             }
         }

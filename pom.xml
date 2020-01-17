@@ -206,14 +206,14 @@
                 <executions>
                     <execution>
                         <id>thrift-sources</id>
-                        <phase>generate-resources</phase>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
                     </execution>
                     <execution>
                         <id>thrift-test-sources</id>
-                        <phase>generate-test-resources</phase>
+                        <phase>generate-test-sources</phase>
                         <goals>
                             <goal>testCompile</goal>
                         </goals>

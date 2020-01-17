@@ -12,11 +12,7 @@ class Connection(val id: String) {
     lateinit var remoteAddress: InetSocketAddress
         internal set
 
-    internal lateinit var getConnectRequest: () -> ConnectRequest
-
-    val connectRequest by lazy {
-        getConnectRequest()
-    }
+    lateinit var connectRequest: ConnectRequest
 
     var account: String = "default"
 
