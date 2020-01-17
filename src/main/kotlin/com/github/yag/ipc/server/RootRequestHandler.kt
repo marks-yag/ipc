@@ -1,6 +1,7 @@
 package com.github.yag.ipc.server
 
 import com.github.yag.ipc.*
+import io.netty.buffer.Unpooled
 import java.lang.IllegalArgumentException
 import java.util.concurrent.ConcurrentHashMap
 
@@ -12,36 +13,32 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
         handlers[requestType] = handler
     }
 
-    fun set(contentType: String, handler: (Connection, Request, (Response) -> Unit) -> Unit) {
+    fun set(contentType: String, handler: (Connection, RequestPacket, (ResponsePacket) -> Unit) -> Unit) {
         set(contentType, object: RequestHandler {
-            override fun handle(connection: Connection, request: Request, echo: (Response) -> Unit) {
+            override fun handle(connection: Connection, request: RequestPacket, echo: (ResponsePacket) -> Unit) {
                 handler(connection, request, echo)
             }
         })
     }
 
-    fun map(contentType: String, map: (Request) -> Response) {
+    fun map(contentType: String, map: (RequestPacket) -> ResponsePacket) {
         set(contentType) { _, request, echo ->
             echo(map(request))
         }
     }
 
-    override fun handle(connection: Connection, request: Request, echo: (Response) -> Unit) {
-        val handler = handlers[request.callType]
+    override fun handle(connection: Connection, request: RequestPacket, echo: (ResponsePacket) -> Unit) {
+        val handler = handlers[request.request.header.callType]
         if (handler != null) {
             try {
                 handler.handle(connection, request, echo)
             } catch (e: IllegalArgumentException) {
-                echo(request.status(StatusCode.BAD_REQUEST) {
-                    content(e.toString().toByteArray(Charsets.UTF_8))
-                })
+                echo(ResponsePacket(Response.header(ResponseHeader(request.request.header.callId, StatusCode.BAD_REQUEST, 0)), Unpooled.EMPTY_BUFFER))
             } catch (e: Throwable) {
-                echo(request.status(StatusCode.INTERNAL_ERROR) {
-                    content(e.toString().toByteArray(Charsets.UTF_8))
-                })
+                echo(ResponsePacket(Response.header(ResponseHeader(request.request.header.callId, StatusCode.INTERNAL_ERROR, 0)), Unpooled.EMPTY_BUFFER))
             }
         } else {
-            echo(request.status(StatusCode.NOT_FOUND))
+            echo(ResponsePacket(Response.header(ResponseHeader(request.request.header.callId, StatusCode.NOT_FOUND, 0)), Unpooled.EMPTY_BUFFER))
         }
     }
 

@@ -3,7 +3,7 @@ package com.github.yag.ipc.server
 import com.github.yag.ipc.*
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.ByteBufInputStream
+import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -18,8 +18,6 @@ import io.netty.handler.timeout.ReadTimeoutException
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.traffic.GlobalTrafficShapingHandler
 import io.netty.util.concurrent.DefaultThreadFactory
-import org.apache.thrift.protocol.TBinaryProtocol
-import org.apache.thrift.transport.TIOStreamTransport
 import org.jetbrains.annotations.TestOnly
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -32,10 +30,10 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class IPCServer internal constructor(
-        private val config: IPCServerConfig,
-        private val requestHandler: RequestHandler,
-        private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
-        private val id: String
+    private val config: IPCServerConfig,
+    private val requestHandler: RequestHandler,
+    private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
+    private val id: String
 ) : AutoCloseable {
 
     private val serverBootstrap: ServerBootstrap
@@ -70,11 +68,12 @@ class IPCServer internal constructor(
         }
         serverBootstrap = ServerBootstrap().apply {
             channel(NioServerSocketChannel::class.java)
-                    .group(
-                            NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
-                            NioEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true)))
-                    .applyChannelConfig(config.channelConfig)
-                    .childHandler(handler)
+                .group(
+                    NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
+                    NioEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+                )
+                .applyChannelConfig(config.channelConfig)
+                .childHandler(handler)
         }
 
         try {
@@ -107,7 +106,7 @@ class IPCServer internal constructor(
                 addLast(LengthFieldPrepender(4, 0))
 
                 addLast(TEncoder(ConnectionResponse::class.java))
-                addLast(TEncoder(ResponsePacket::class.java))
+                addLast(RequestPacketEncoder())
 
                 addLast(RequestDecoder(connection))
 
@@ -123,7 +122,6 @@ class IPCServer internal constructor(
         private var connected = false
 
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
-
             if (!connected) {
                 LOG.debug("Handling incoming connect request from: {}.", ctx.channel().remoteAddress())
 
@@ -136,21 +134,38 @@ class IPCServer internal constructor(
                 try {
                     connectionHandler.handle(connection)
                     connected = true
-                    LOG.debug("Connected, connectionId: {}, remoteAddress: {}.", connection.id, connection.remoteAddress)
+                    LOG.debug(
+                        "Connected, connectionId: {}, remoteAddress: {}.",
+                        connection.id,
+                        connection.remoteAddress
+                    )
                     ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.accepted(ConnectionAccepted(connection.id))))
                 } catch (e: Exception) {
-                    LOG.debug("Reject connection, connectionId: {}, remoteAddress: {}.", connection.id, connection.remoteAddress)
+                    LOG.debug(
+                        "Reject connection, connectionId: {}, remoteAddress: {}.",
+                        connection.id,
+                        connection.remoteAddress
+                    )
                     ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.rejected(ConnectionRejected((e.message)))))
                     ctx.close()
                 }
             } else {
-                val packet = TDecoder.decode(RequestPacket(), buf)
-                if (packet.isSetRequests) {
-                    out.add(packet.requests)
-                } else if (packet.isSetHeartbeat) {
+                val packet = decodeRequestPacket(buf)
+                if (packet.request.isSetHeader) {
+                    out.add(packet)
+                } else {
+                    check(packet.request.isSetHeartbeat)
                     if (!ignoreHeartbeat) {
-                        val timestamp = minOf(packet.heartbeat.timestamp, System.currentTimeMillis())
-                        val heartbeat = ResponsePacket.heartbeat(Heartbeat(timestamp))
+                        val timestamp = minOf(packet.request.heartbeat.timestamp, System.currentTimeMillis())
+                        val heartbeat = ResponsePacket(
+                            Response.header(
+                                ResponseHeader(
+                                    packet.request.heartbeat.timestamp,
+                                    StatusCode.OK,
+                                    0
+                                )
+                            ), Unpooled.EMPTY_BUFFER
+                        )
                         ctx.writeAndFlush(heartbeat)
                     }
                 }
@@ -162,24 +177,23 @@ class IPCServer internal constructor(
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             super.channelRead(ctx, msg)
-            val requests = msg as List<Request>
-            requests.forEach { request ->
-                LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, request.callId)
-                requestHandler.handle(connection, request) {
-                    assert(it.callId == request.callId)
-                    if (ctx.channel().eventLoop().inEventLoop()) {
-                        ctx.write(ResponsePacket.response(it), ctx.voidPromise())
-                    } else {
-                        try {
-                            ctx.channel().eventLoop().execute {
-                                ctx.write(ResponsePacket.response(it), ctx.voidPromise())
-                            }
-                        } catch (e: RejectedExecutionException) {
-                            LOG.info("Ignored pending response: {}.", it.callId)
+            val packet = msg as RequestPacket
+            LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, packet.request.header.callId)
+            requestHandler.handle(connection, packet) {
+                check(it.response.header.callId == packet.request.header.callId)
+
+                if (ctx.channel().eventLoop().inEventLoop()) {
+                    ctx.write(it, ctx.voidPromise())
+                } else {
+                    try {
+                        ctx.channel().eventLoop().execute {
+                            ctx.write(it, ctx.voidPromise())
                         }
+                    } catch (e: RejectedExecutionException) {
+                        LOG.info("Ignored pending response: {}.", it.response.header.callId)
                     }
-                    LOG.trace("Send response, id: {}, requestId: {}.", connection.id, it.callId)
                 }
+                LOG.trace("Send response, id: {}, requestId: {}.", connection.id, it.response.header.callId)
             }
         }
 

@@ -25,26 +25,21 @@ struct Heartbeat {
 1: required i64 timestamp
 }
 
-union RequestPacket {
+union Request {
 1: Heartbeat heartbeat
-2: list<Request> requests
+2: RequestHeader header
 }
 
-struct Content {
-1: optional string type
-2: required binary body
-}
-
-struct Request {
+struct RequestHeader {
 1: required i64 callId
 2: required string callType
-3: optional Content content
-4: optional map<string, string> headers
+3: required i32 contentLength
 }
 
-union ResponsePacket {
+
+union Response {
 1: Heartbeat heartbeat
-2: Response response
+2: ResponseHeader header
 }
 
 enum StatusCode {
@@ -64,9 +59,8 @@ CONNECTION_ERROR = 500
 
 }
 
-struct Response {
+struct ResponseHeader {
 1: required i64 callId
 2: required StatusCode statusCode
-3: optional Content content
-4: optional map<string, string> headers
+3: required i32 contentLength
 }
