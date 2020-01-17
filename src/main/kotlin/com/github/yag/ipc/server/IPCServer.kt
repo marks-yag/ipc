@@ -107,7 +107,7 @@ class IPCServer internal constructor(
                 addLast(LengthFieldPrepender(4, 0))
 
                 addLast(TEncoder(ConnectionResponse::class.java))
-                addLast(ResponsePacketEncoder())
+                addLast(PacketEncoder())
 
                 addLast(RequestDecoder(connection))
 
@@ -153,17 +153,17 @@ class IPCServer internal constructor(
                     ctx.close()
                 }
             } else {
-                val packet = decodeRequestPacket(buf)
-                if (!isHeartbeat(packet.header)) {
+                val packet = PacketCodec.decode(buf, RequestPacketHeader())
+                if (!packet.header.isHeartbeat(packet.header.thrift)) {
                     out.add(packet)
                 } else {
                     if (!ignoreHeartbeat) {
-                        val heartbeat = ResponsePacket(
-                            ResponseHeader(
+                        val heartbeat = Packet(
+                            ResponsePacketHeader(ResponseHeader(
                                 -1L,
                                 StatusCode.OK,
                                 0
-                            ), Unpooled.EMPTY_BUFFER)
+                            )), Unpooled.EMPTY_BUFFER)
                         ctx.writeAndFlush(heartbeat)
                     }
                 }
@@ -175,11 +175,11 @@ class IPCServer internal constructor(
 
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             super.channelRead(ctx, msg)
-            val packet = msg as RequestPacket
+            val packet = msg as Packet<RequestHeader>
             val header = packet.header
-            LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, header.callId)
+            LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, header.thrift.callId)
             requestHandler.handle(connection, packet) {
-                check(it.header.callId == header.callId)
+                check(it.header.thrift.callId == header.thrift.callId)
 
                 if (ctx.channel().eventLoop().inEventLoop()) {
                     ctx.write(it, ctx.voidPromise())
@@ -189,10 +189,10 @@ class IPCServer internal constructor(
                             ctx.write(it, ctx.voidPromise())
                         }
                     } catch (e: RejectedExecutionException) {
-                        LOG.info("Ignored pending response: {}.", it.header.callId)
+                        LOG.info("Ignored pending response: {}.", it.header.thrift.callId)
                     }
                 }
-                LOG.trace("Send response, id: {}, requestId: {}.", connection.id, it.header.callId)
+                LOG.trace("Send response, id: {}, requestId: {}.", connection.id, it.header.thrift.callId)
             }
         }
 

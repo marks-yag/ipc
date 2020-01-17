@@ -11,13 +11,13 @@ class RequestPacketSerDesTest {
     fun test() {
         val data = Unpooled.wrappedBuffer("hello".toByteArray())
 
-        val packet = RequestPacket(RequestHeader(1, "foo", data.readableBytes()), data)
+        val packet = Packet(RequestPacketHeader(RequestHeader(1, "foo", data.readableBytes())), data)
 
-        val buf = encodeRequestPacket(packet, ByteBufAllocator.DEFAULT)
+        val buf = PacketCodec.encode(packet, ByteBufAllocator.DEFAULT)
 
-        val newPacket = decodeRequestPacket(buf)
-        assertEquals(1, newPacket.header.callId)
-        assertEquals("foo", newPacket.header.callType)
-        assertEquals(5, newPacket.header.contentLength)
+        val newPacket = PacketCodec.decode(buf, RequestPacketHeader())
+        assertEquals(1, newPacket.header.thrift.callId)
+        assertEquals("foo", newPacket.header.thrift.callType)
+        assertEquals(5, newPacket.header.thrift.contentLength)
     }
 }

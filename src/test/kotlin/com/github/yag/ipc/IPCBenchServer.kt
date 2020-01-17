@@ -44,7 +44,7 @@ object IPCBenchServer {
         server(config) {
             request {
                 map("req") {
-                    ResponsePacket(ResponseHeader(it.header.callId, StatusCode.OK, it.header.contentLength), Unpooled.wrappedBuffer(ByteArray(it.header.contentLength)))
+                    Packet(ResponsePacketHeader(ResponseHeader(it.header.thrift.callId, StatusCode.OK, it.header.thrift.contentLength)), Unpooled.wrappedBuffer(ByteArray(it.header.thrift.contentLength)))
                 }
             }
         }

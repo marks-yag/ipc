@@ -1,12 +1,9 @@
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.RequestHeader
-import com.github.yag.ipc.RequestPacket
-import com.github.yag.ipc.ResponseHeader
-import com.github.yag.ipc.ResponsePacket
+import com.github.yag.ipc.*
 
 interface RequestHandler {
 
-    fun handle(connection: Connection, request: RequestPacket, echo: (ResponsePacket) -> Unit)
+    fun handle(connection: Connection, request: Packet<RequestHeader>, echo: (Packet<ResponseHeader>) -> Unit)
 
 }

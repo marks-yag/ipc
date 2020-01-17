@@ -83,7 +83,7 @@ object IPCBenchClient {
                         val endMs = System.currentTimeMillis()
                         callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
-                        if (!it.header.statusCode.isSuccessful()) {
+                        if (!it.header.thrift.statusCode.isSuccessful()) {
                             errorMetric.mark()
                         }
                         latch.countDown()

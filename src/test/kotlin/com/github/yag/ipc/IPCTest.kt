@@ -48,7 +48,7 @@ class IPCTest {
                 headers["token"] = "foo"
             }.use { client ->
                 client.sendSync("foo", requestData).let {
-                    assertEquals(StatusCode.NOT_FOUND, it.header.statusCode)
+                    assertEquals(StatusCode.NOT_FOUND, it.header.thrift.statusCode)
                 }
             }
         }
@@ -76,15 +76,15 @@ class IPCTest {
 
     private fun doTest(client: IPCClient) {
         client.sendSync("foo", requestData).let {
-            assertEquals(StatusCode.OK, it.header.statusCode)
+            assertEquals(StatusCode.OK, it.header.thrift.statusCode)
         }
 
         client.sendSync("bar", requestData).let {
-            assertEquals(StatusCode.BAD_REQUEST, it.header.statusCode)
+            assertEquals(StatusCode.BAD_REQUEST, it.header.thrift.statusCode)
         }
 
         client.sendSync("not-exist", requestData).let {
-            assertEquals(StatusCode.NOT_FOUND, it.header.statusCode)
+            assertEquals(StatusCode.NOT_FOUND, it.header.thrift.statusCode)
         }
     }
 
@@ -103,7 +103,7 @@ class IPCTest {
                 endpoint = server.endpoint
             }.use { client ->
                 client.sendSync("any", requestData).let {
-                    assertEquals(StatusCode.OK, it.header.statusCode)
+                    assertEquals(StatusCode.OK, it.header.thrift.statusCode)
                     assertEquals(requestData, it.body)
                 }
             }
@@ -125,21 +125,21 @@ class IPCTest {
             client {
                 endpoint = server.endpoint
             }.use { client ->
-                val queue = LinkedBlockingQueue<ResponsePacket>()
+                val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
                 client.send("foo", requestData) {
                     queue.add(it)
                 }
 
                 repeat(10) {
                     queue.take().let {
-                        assertEquals(StatusCode.PARTIAL_CONTENT, it.header.statusCode)
-                        assertEquals(1, it.header.callId)
+                        assertEquals(StatusCode.PARTIAL_CONTENT, it.header.thrift.statusCode)
+                        assertEquals(1, it.header.thrift.callId)
                     }
                 }
 
                 queue.take().let {
-                    assertEquals(StatusCode.OK, it.header.statusCode)
-                    assertEquals(1, it.header.callId)
+                    assertEquals(StatusCode.OK, it.header.thrift.statusCode)
+                    assertEquals(1, it.header.thrift.callId)
                 }
             }
         }
@@ -160,8 +160,8 @@ class IPCTest {
             client {
                 endpoint = server.endpoint
             }.use { client ->
-                assertEquals(StatusCode.BAD_REQUEST, client.sendSync("foo", requestData).header.statusCode)
-                assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("bar", requestData).header.statusCode)
+                assertEquals(StatusCode.BAD_REQUEST, client.sendSync("foo", requestData).header.thrift.statusCode)
+                assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("bar", requestData).header.thrift.statusCode)
             }
         }
     }
@@ -175,7 +175,7 @@ class IPCTest {
         server {
             request {
                 map("foo") {
-                    queue.put(it.header.callId)
+                    queue.put(it.header.thrift.callId)
                     it.ok()
                 }
             }
@@ -223,7 +223,7 @@ class IPCTest {
             server.close()
 
             val result = resultFuture.get(3, TimeUnit.SECONDS)
-            assertEquals(StatusCode.TIMEOUT, result.header.statusCode)
+            assertEquals(StatusCode.TIMEOUT, result.header.thrift.statusCode)
 
             assertFalse(client.isConnected())
         }
@@ -289,12 +289,12 @@ class IPCTest {
                 heartbeatTimeoutMs = 1000
             }.use { client ->
                 repeat(10) {
-                    assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.statusCode)
+                    assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.thrift.statusCode)
                     Thread.sleep(200)
                 }
 
                 Thread.sleep(3000)
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.statusCode)
+                assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.thrift.statusCode)
             }
         }
     }
@@ -325,17 +325,17 @@ class IPCTest {
                     assertFalse(client.isConnected())
                 }
 
-                assertEquals(StatusCode.CONNECTION_ERROR, client.sendSync("any", requestData).header.statusCode)
+                assertEquals(StatusCode.CONNECTION_ERROR, client.sendSync("any", requestData).header.thrift.statusCode)
 
                 eventually(5000) {
                     assertTrue(client.isConnected())
                 }
 
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.statusCode)
+                assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.thrift.statusCode)
 
                 Thread.sleep(5000)
 
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.statusCode)
+                assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).header.thrift.statusCode)
             }
         }
     }
