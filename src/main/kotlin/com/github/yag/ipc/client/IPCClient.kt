@@ -128,13 +128,13 @@ class IPCClient(
                 val now = System.currentTimeMillis()
                 while (iterator.hasNext()) {
                     val next = iterator.next()
-                    if (now - next.value.lastContactTimestramp > config.requestTimeoutMs) {
+                    if (now - next.value.lastContactTimestamp > config.requestTimeoutMs) {
                         LOG.debug("Handle timeout request, connectionId: {}, requestId: {}.", connection.connectionId, next.key)
                         iterator.remove()
                         parallelCalls.release()
                         try {
                             next.value.func(
-                                Packet(ResponsePacketHeader(ResponseHeader(next.key, StatusCode.TIMEOUT, 0)), Unpooled.EMPTY_BUFFER)
+                                status(next.key, StatusCode.TIMEOUT)
                             )
                         } catch (e: Exception) {
                             LOG.warn("Callback error, connectionId: {}, requestId: {}.", connection.connectionId, next.key, e)
@@ -202,11 +202,11 @@ class IPCClient(
 
     fun send(type: String, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Unit) {
         locking(lock) {
-            val request = RequestHeader(++currentId, type, buf.readableBytes())
-            val requestPacket = Packet(RequestPacketHeader(request), buf)
+            val header = RequestHeader(++currentId, type, buf.readableBytes())
+            val request = Packet(RequestPacketHeader(header), buf)
 
             if (!connected.get()) {
-                callback(Packet(ResponsePacketHeader(ResponseHeader(request.callId, StatusCode.CONNECTION_ERROR, 0)), Unpooled.EMPTY_BUFFER))
+                callback(request.status(StatusCode.CONNECTION_ERROR))
             }
 
             blockTime.update(measureTimeMillis {
@@ -214,11 +214,11 @@ class IPCClient(
             })
 
             val timestamp = System.currentTimeMillis()
-            callbacks[request.callId] = Callback(timestamp, callback)
+            callbacks[header.callId] = Callback(timestamp, callback)
 
-            parallelRequestContentSize.acquire(request.contentLength)
-            queue.offer(RequestWithTime(requestPacket, timestamp), Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-            LOG.trace("Queued request: {}.", request.callId)
+            parallelRequestContentSize.acquire(header.contentLength)
+            queue.offer(RequestWithTime(request, timestamp), Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+            LOG.trace("Queued request: {}.", header.callId)
         }
     }
 
@@ -266,7 +266,7 @@ class IPCClient(
             callbacks.keys.forEach { key ->
                 callbacks.remove(key)?.let { cb ->
                     parallelCalls.release()
-                    cb.func(Packet(ResponsePacketHeader(ResponseHeader(key, StatusCode.TIMEOUT, 0)), Unpooled.EMPTY_BUFFER))
+                    cb.func(status(key, StatusCode.TIMEOUT))
                 }
             }
         }
@@ -323,7 +323,7 @@ class IPCClient(
                     callbacks.remove(header.thrift.callId)
                     parallelCalls.release()
                 } else {
-                    it.lastContactTimestramp = System.currentTimeMillis()
+                    it.lastContactTimestamp = System.currentTimeMillis()
                     LOG.trace("Continue, connectionId: {}, requestId: {}.", connection.connectionId, header.thrift.callId)
                 }
                 it.func(packet)
@@ -393,7 +393,7 @@ class IPCClient(
 
 }
 
-data class Callback(var lastContactTimestramp: Long, val func: (Packet<ResponseHeader>) -> Unit)
+data class Callback(var lastContactTimestamp: Long, val func: (Packet<ResponseHeader>) -> Unit)
 
 data class RequestWithTime(val request: Packet<RequestHeader>, val timestamp: Long)
 

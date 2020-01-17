@@ -20,5 +20,9 @@ fun Packet<RequestHeader>.ok(data: ByteBuf = Unpooled.EMPTY_BUFFER) : Packet<Res
 }
 
 fun Packet<RequestHeader>.status(code: StatusCode, data: ByteBuf = Unpooled.EMPTY_BUFFER) : Packet<ResponseHeader> {
-    return Packet(ResponsePacketHeader(ResponseHeader(header.thrift.callId, code, data.readableBytes())), data)
+    return status(header.thrift.callId, code, data)
+}
+
+fun status(callId: Long, code: StatusCode, data: ByteBuf = Unpooled.EMPTY_BUFFER) : Packet<ResponseHeader> {
+    return Packet(ResponsePacketHeader(ResponseHeader(callId, code, data.readableBytes())), data)
 }
