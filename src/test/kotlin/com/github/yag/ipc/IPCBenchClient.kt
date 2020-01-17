@@ -8,6 +8,7 @@ import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.IPCClientConfig
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.IPCServerConfig
+import io.netty.buffer.Unpooled
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
@@ -72,18 +73,17 @@ object IPCBenchClient {
         reporter.start(1, TimeUnit.SECONDS)
 
         val client = IPCClient(config)
-        val headers = mapOf("resp-size" to responseBodySize.toString())
 
         val latch = CountDownLatch(concurrency * requests)
         repeat(concurrency) { loop ->
             thread {
                 repeat(requests) {
                     val startMs= System.currentTimeMillis()
-                    client.send("req", Content(ByteBuffer.wrap(ByteArray(requestBodySize))), headers) {
+                    client.send("req", Unpooled.wrappedBuffer(ByteArray(requestBodySize))) {
                         val endMs = System.currentTimeMillis()
                         callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
-                        if (!it.isSuccessful()) {
+                        if (!it.header.statusCode.isSuccessful()) {
                             errorMetric.mark()
                         }
                         latch.countDown()

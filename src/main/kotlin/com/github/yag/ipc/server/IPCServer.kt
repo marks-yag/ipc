@@ -3,6 +3,7 @@ package com.github.yag.ipc.server
 import com.github.yag.ipc.*
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufUtil
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
@@ -106,7 +107,7 @@ class IPCServer internal constructor(
                 addLast(LengthFieldPrepender(4, 0))
 
                 addLast(TEncoder(ConnectionResponse::class.java))
-                addLast(RequestPacketEncoder())
+                addLast(ResponsePacketEncoder())
 
                 addLast(RequestDecoder(connection))
 
@@ -122,14 +123,16 @@ class IPCServer internal constructor(
         private var connected = false
 
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
+            if (LOG.isTraceEnabled) {
+                LOG.trace("Decode request: ${buf.readableBytes()}, ${ByteBufUtil.hexDump(buf)}")
+            }
+
             if (!connected) {
                 LOG.debug("Handling incoming connect request from: {}.", ctx.channel().remoteAddress())
 
                 connection.remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
                 connection.localAddress = ctx.channel().localAddress() as InetSocketAddress
-                connection.getConnectRequest = {
-                    TDecoder.decode(ConnectRequest(), buf)
-                }
+                connection.connectRequest = TDecoder.decode(ConnectRequest(), buf)
 
                 try {
                     connectionHandler.handle(connection)
@@ -151,21 +154,16 @@ class IPCServer internal constructor(
                 }
             } else {
                 val packet = decodeRequestPacket(buf)
-                if (packet.request.isSetHeader) {
+                if (!isHeartbeat(packet.header)) {
                     out.add(packet)
                 } else {
-                    check(packet.request.isSetHeartbeat)
                     if (!ignoreHeartbeat) {
-                        val timestamp = minOf(packet.request.heartbeat.timestamp, System.currentTimeMillis())
                         val heartbeat = ResponsePacket(
-                            Response.header(
-                                ResponseHeader(
-                                    packet.request.heartbeat.timestamp,
-                                    StatusCode.OK,
-                                    0
-                                )
-                            ), Unpooled.EMPTY_BUFFER
-                        )
+                            ResponseHeader(
+                                -1L,
+                                StatusCode.OK,
+                                0
+                            ), Unpooled.EMPTY_BUFFER)
                         ctx.writeAndFlush(heartbeat)
                     }
                 }
@@ -178,9 +176,10 @@ class IPCServer internal constructor(
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             super.channelRead(ctx, msg)
             val packet = msg as RequestPacket
-            LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, packet.request.header.callId)
+            val header = packet.header
+            LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, header.callId)
             requestHandler.handle(connection, packet) {
-                check(it.response.header.callId == packet.request.header.callId)
+                check(it.header.callId == header.callId)
 
                 if (ctx.channel().eventLoop().inEventLoop()) {
                     ctx.write(it, ctx.voidPromise())
@@ -190,10 +189,10 @@ class IPCServer internal constructor(
                             ctx.write(it, ctx.voidPromise())
                         }
                     } catch (e: RejectedExecutionException) {
-                        LOG.info("Ignored pending response: {}.", it.response.header.callId)
+                        LOG.info("Ignored pending response: {}.", it.header.callId)
                     }
                 }
-                LOG.trace("Send response, id: {}, requestId: {}.", connection.id, it.response.header.callId)
+                LOG.trace("Send response, id: {}, requestId: {}.", connection.id, it.header.callId)
             }
         }
 

@@ -28,17 +28,17 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
     }
 
     override fun handle(connection: Connection, request: RequestPacket, echo: (ResponsePacket) -> Unit) {
-        val handler = handlers[request.request.header.callType]
+        val handler = handlers[request.header.callType]
         if (handler != null) {
             try {
                 handler.handle(connection, request, echo)
             } catch (e: IllegalArgumentException) {
-                echo(ResponsePacket(Response.header(ResponseHeader(request.request.header.callId, StatusCode.BAD_REQUEST, 0)), Unpooled.EMPTY_BUFFER))
+                echo(ResponsePacket(ResponseHeader(request.header.callId, StatusCode.BAD_REQUEST, 0), Unpooled.EMPTY_BUFFER))
             } catch (e: Throwable) {
-                echo(ResponsePacket(Response.header(ResponseHeader(request.request.header.callId, StatusCode.INTERNAL_ERROR, 0)), Unpooled.EMPTY_BUFFER))
+                echo(ResponsePacket(ResponseHeader(request.header.callId, StatusCode.INTERNAL_ERROR, 0), Unpooled.EMPTY_BUFFER))
             }
         } else {
-            echo(ResponsePacket(Response.header(ResponseHeader(request.request.header.callId, StatusCode.NOT_FOUND, 0)), Unpooled.EMPTY_BUFFER))
+            echo(ResponsePacket(ResponseHeader(request.header.callId, StatusCode.NOT_FOUND, 0), Unpooled.EMPTY_BUFFER))
         }
     }
 

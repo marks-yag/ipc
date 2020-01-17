@@ -1,6 +1,7 @@
 package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufAllocator
 import io.netty.buffer.CompositeByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
@@ -8,25 +9,32 @@ import io.netty.channel.ChannelOutboundHandlerAdapter
 import io.netty.channel.ChannelPromise
 import org.apache.thrift.protocol.TBinaryProtocol
 
-data class ResponsePacket(val response: Response, val body: ByteBuf)
+class ResponsePacketHeader(header: ResponseHeader) : PacketHeader<ResponseHeader>(header, {
+    header.contentLength
+})
+
+data class ResponsePacket(val header: ResponseHeader, val body: ByteBuf) {
+
+    constructor(callId: Long, code: StatusCode, body: ByteBuf) : this(ResponseHeader(callId, code, body.readableBytes()), body)
+
+
+    fun encode(allocator: ByteBufAllocator) : ByteBuf {
+        val buf = allocator.buffer()
+        val protocol = TBinaryProtocol(TByteBufTransport(buf))
+        header.write(protocol)
+        check(header.contentLength == body.readableBytes())
+
+        return Unpooled.wrappedBuffer(buf, body.retain())
+    }
+
+}
 
 class ResponsePacketEncoder : ChannelOutboundHandlerAdapter() {
 
     override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
         if (msg is ResponsePacket) {
-            val buf = CompositeByteBuf(ctx.alloc(), false, 2)
-            try {
-                val protocol = TBinaryProtocol(TByteBufTransport(buf))
-                msg.response.write(protocol)
-                if (msg.response.isSetHeader) {
-                    check(msg.response.header.contentLength == msg.body.readableBytes())
-                    buf.addComponent(msg.body)
-                }
-
-                ctx.write(buf, promise)
-            } finally {
-                buf.release()
-            }
+            val buf = msg.encode(ctx.alloc())
+            ctx.write(buf, promise)
         } else {
             ctx.write(msg, promise)
         }
@@ -35,15 +43,14 @@ class ResponsePacketEncoder : ChannelOutboundHandlerAdapter() {
 }
 
 fun decodeResponsePacket(buf: ByteBuf) : ResponsePacket {
-    val response = TDecoder.decode(Response(), buf)
-    return if (response.isSetHeader) {
-        val header = response.header
-        check(buf.readableBytes() == header.contentLength)
+    val header = TDecoder.decode(ResponseHeader(), buf)
+    check(buf.readableBytes() == header.contentLength)
 
-        val body = buf.slice(buf.readerIndex(), header.contentLength)
-        ResponsePacket(response, body)
-    } else {
-        ResponsePacket(response, Unpooled.EMPTY_BUFFER)
-    }
+    val body = buf.slice(buf.readerIndex(), header.contentLength)
+    buf.skipBytes(header.contentLength)
+    return ResponsePacket(header, body.retain())
 }
 
+fun isHeartbeat(header: ResponseHeader) : Boolean {
+    return header.callId == -1L
+}

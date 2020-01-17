@@ -21,26 +21,12 @@ union ConnectionResponse {
 2: ConnectionRejected rejected
 }
 
-struct Heartbeat {
-1: required i64 timestamp
-}
-
-union Request {
-1: Heartbeat heartbeat
-2: RequestHeader header
-}
-
 struct RequestHeader {
 1: required i64 callId
 2: required string callType
 3: required i32 contentLength
 }
 
-
-union Response {
-1: Heartbeat heartbeat
-2: ResponseHeader header
-}
 
 enum StatusCode {
 OK = 100

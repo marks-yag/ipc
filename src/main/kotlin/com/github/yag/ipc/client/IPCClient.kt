@@ -133,7 +133,9 @@ class IPCClient(
                         iterator.remove()
                         parallelCalls.release()
                         try {
-                            next.value.func(ResponsePacket(Response.header(ResponseHeader(next.key, StatusCode.TIMEOUT, 0)), Unpooled.EMPTY_BUFFER))
+                            next.value.func(
+                                ResponsePacket(ResponseHeader(next.key, StatusCode.TIMEOUT, 0), Unpooled.EMPTY_BUFFER)
+                            )
                         } catch (e: Exception) {
                             LOG.warn("Callback error, connectionId: {}, requestId: {}.", connection.connectionId, next.key, e)
                         }
@@ -174,15 +176,18 @@ class IPCClient(
                                     batchSize.update(list.size)
 
                                     val start = System.currentTimeMillis()
-                                    val size = list.sumBy { it.body.readableBytes() }
 
-                                    channel.writeAndFlush(list).addListener {
-                                        sendTime.update(System.currentTimeMillis() - start)
-                                        parallelRequestContentSize.release(size)
-                                        if (LOG.isTraceEnabled) {
-                                            LOG.trace("Released {} then {}.", size, parallelRequestContentSize.availablePermits())
+                                    list.forEach { packet ->
+                                        channel.write(packet).addListener {
+                                            sendTime.update(System.currentTimeMillis() - start)
+                                            parallelRequestContentSize.release(packet.header.contentLength)
+                                            if (LOG.isTraceEnabled) {
+                                                LOG.trace("Released {} then {}.", packet.header.contentLength, parallelRequestContentSize.availablePermits())
+                                            }
                                         }
                                     }
+
+                                    channel.flush()
                                 }
                                 queueTime.update(qt)
                             }
@@ -195,13 +200,13 @@ class IPCClient(
         }
     }
 
-    fun send(type: String, contentType: String?, buf: ByteBuf, header: Map<String, String>? = null, callback: (ResponsePacket) -> Unit) {
+    fun send(type: String, buf: ByteBuf, callback: (ResponsePacket) -> Unit) {
         locking(lock) {
             val request = RequestHeader(++currentId, type, buf.readableBytes())
-            val requestPacket = RequestPacket(Request.header(request), buf)
+            val requestPacket = RequestPacket(request, buf)
 
             if (!connected.get()) {
-                callback(ResponsePacket(Response.header(ResponseHeader(request.callId, StatusCode.CONNECTION_ERROR, 0)), Unpooled.EMPTY_BUFFER))
+                callback(ResponsePacket(ResponseHeader(request.callId, StatusCode.CONNECTION_ERROR, 0), Unpooled.EMPTY_BUFFER))
             }
 
             blockTime.update(measureTimeMillis {
@@ -217,15 +222,15 @@ class IPCClient(
         }
     }
 
-    fun send(type: String, buf: ByteBuf, contentType: String? = null): Future<ResponsePacket> {
+    fun send(type: String, buf: ByteBuf): Future<ResponsePacket> {
         val future = SettableFuture.create<ResponsePacket>()
-        send(type, contentType, buf) {
+        send(type, buf) {
             future.set(it)
         }
         return future
     }
 
-    fun sendSync(type: String, data: ByteBuf, contentType: String? = null): ResponsePacket {
+    fun sendSync(type: String, data: ByteBuf): ResponsePacket {
         return send(type, data).get()
     }
 
@@ -261,7 +266,7 @@ class IPCClient(
             callbacks.keys.forEach { key ->
                 callbacks.remove(key)?.let { cb ->
                     parallelCalls.release()
-                    cb.func(ResponsePacket(Response.header(ResponseHeader(key, StatusCode.TIMEOUT, 0)), Unpooled.EMPTY_BUFFER))
+                    cb.func(ResponsePacket(ResponseHeader(key, StatusCode.TIMEOUT, 0), Unpooled.EMPTY_BUFFER))
                 }
             }
         }
@@ -289,11 +294,11 @@ class IPCClient(
                 }
             } else {
                 val packet = decodeResponsePacket(buf)
-                if (packet.response.isSetHeader) {
+                if (!isHeartbeat(packet.header)) {
                     out.add(packet)
                 } else {
                     LOG.debug("Received heartbeat ack.")
-                    lastContact = minOf(packet.response.heartbeat.timestamp, System.currentTimeMillis())
+                    lastContact = System.currentTimeMillis()
                 }
             }
         }
@@ -303,24 +308,23 @@ class IPCClient(
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             super.channelRead(ctx, msg)
             val packet = msg as ResponsePacket
-            check(packet.response.isSetHeader)
 
-            val response = packet.response
+            val header = packet.header
             LOG.trace("Received response, connectionId: {}, requestId: {}.",
                 connection.connectionId,
-                response.header.callId)
+                header.callId)
             doCallback(packet)
         }
 
         private fun doCallback(packet: ResponsePacket) {
-            val response = packet.response
-            callbacks[response.header.callId]?.let {
-                if (response.header.statusCode != StatusCode.PARTIAL_CONTENT) {
-                    callbacks.remove(response.header.callId)
+            val header = packet.header
+            callbacks[header.callId]?.let {
+                if (header.statusCode != StatusCode.PARTIAL_CONTENT) {
+                    callbacks.remove(header.callId)
                     parallelCalls.release()
                 } else {
                     it.lastContactTimestramp = System.currentTimeMillis()
-                    LOG.trace("Continue, connectionId: {}, requestId: {}.", connection.connectionId, response.header.callId)
+                    LOG.trace("Continue, connectionId: {}, requestId: {}.", connection.connectionId, header.callId)
                 }
                 it.func(packet)
             }
@@ -351,7 +355,9 @@ class IPCClient(
                     IdleState.WRITER_IDLE -> {
                         if (connected.get()) {
                             LOG.info("Send heartbeat.")
-                            ctx.channel().writeAndFlush(RequestPacket(Request.heartbeat(Heartbeat(System.currentTimeMillis())), Unpooled.EMPTY_BUFFER)).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
+                            ctx.channel().writeAndFlush(
+                                RequestPacket(RequestHeader(-1, "", 0), Unpooled.EMPTY_BUFFER) //TODO create heartbeat fun
+                            ).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
                         }
                     }
                 }
