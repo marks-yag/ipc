@@ -1,16 +1,23 @@
 package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 import org.apache.thrift.TSerializable
 
-class Packet<T: TSerializable>(val header: PacketHeader<T>, val body: ByteBuf)
+class Packet<T: TSerializable>(val header: PacketHeader<T>, val body: ByteBuf) {
 
-open class PacketHeader<T: TSerializable>(val thrift: T, val length: (T) -> Int, val isHeartbeat: (T) -> Boolean) {
+    fun isHeartbeat() = header.isHeartbeat(header.thrift)
 
-    fun packet(body: ByteBuf) : Packet<T> {
-        return Packet(this, body)
+    companion object {
+
+        val requestHeartbeat = Packet(RequestPacketHeader(RequestHeader(-1, "", 0)),  Unpooled.EMPTY_BUFFER)
+
+        val responseHeartbeat = status(-1, StatusCode.OK)
+
     }
 
 }
+
+
 
 

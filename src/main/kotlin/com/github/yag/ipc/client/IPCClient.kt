@@ -5,7 +5,6 @@ import com.google.common.util.concurrent.SettableFuture
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufInputStream
-import io.netty.buffer.Unpooled
 import io.netty.channel.Channel
 import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
@@ -294,7 +293,7 @@ class IPCClient(
                 }
             } else {
                 val packet = PacketCodec.decode(buf, ResponsePacketHeader())
-                if (!packet.header.isHeartbeat(packet.header.thrift)) {
+                if (!packet.isHeartbeat()) {
                     out.add(packet)
                 } else {
                     LOG.debug("Received heartbeat ack.")
@@ -356,7 +355,7 @@ class IPCClient(
                         if (connected.get()) {
                             LOG.info("Send heartbeat.")
                             ctx.channel().writeAndFlush(
-                                Packet(RequestPacketHeader(RequestHeader(-1, "", 0)), Unpooled.EMPTY_BUFFER) //TODO create heartbeat fun
+                                Packet.requestHeartbeat
                             ).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
                         }
                     }

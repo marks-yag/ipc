@@ -4,7 +4,6 @@ import com.github.yag.ipc.*
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
-import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -154,16 +153,11 @@ class IPCServer internal constructor(
                 }
             } else {
                 val packet = PacketCodec.decode(buf, RequestPacketHeader())
-                if (!packet.header.isHeartbeat(packet.header.thrift)) {
+                if (!packet.isHeartbeat()) {
                     out.add(packet)
                 } else {
                     if (!ignoreHeartbeat) {
-                        val heartbeat = Packet(
-                            ResponsePacketHeader(ResponseHeader(
-                                -1L,
-                                StatusCode.OK,
-                                0
-                            )), Unpooled.EMPTY_BUFFER)
+                        val heartbeat = Packet.responseHeartbeat
                         ctx.writeAndFlush(heartbeat)
                     }
                 }
