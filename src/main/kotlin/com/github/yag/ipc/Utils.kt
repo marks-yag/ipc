@@ -23,15 +23,6 @@ fun StatusCode.isSuccessful(): Boolean {
     return (100..199).contains(value)
 }
 
-fun <T> locking(lock: Lock, body: () -> T) : T {
-    lock.lock()
-    try {
-        return body()
-    } finally {
-        lock.unlock()
-    }
-}
-
 fun <T> addThreadName(postfix: String, body: () -> T): T {
     val thread = Thread.currentThread()
     val oldName = thread.name

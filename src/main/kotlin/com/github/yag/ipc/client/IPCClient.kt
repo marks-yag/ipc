@@ -31,6 +31,7 @@ import java.util.UUID
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
 class IPCClient(
@@ -85,7 +86,7 @@ class IPCClient(
     }
 
     private fun initChannel() {
-        locking(lock) {
+        lock.withLock {
             executor = Executors.newSingleThreadScheduledExecutor()
             bootstrap = Bootstrap().apply {
                 channel(NioSocketChannel::class.java)
@@ -200,7 +201,7 @@ class IPCClient(
     }
 
     fun send(type: String, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Unit) {
-        locking(lock) {
+        lock.withLock {
             val header = RequestHeader(++currentId, type, buf.readableBytes())
             val request = Packet(RequestPacketHeader(header), buf)
 
@@ -261,7 +262,7 @@ class IPCClient(
     }
 
     private fun handlePendingRequests() {
-        locking(cbLock) {
+        cbLock.withLock {
             callbacks.keys.forEach { key ->
                 callbacks.remove(key)?.let { cb ->
                     parallelCalls.release()
