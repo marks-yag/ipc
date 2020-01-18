@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 
 object PacketCodec {
 
-    fun <T: TSerializable> encode(packet: Packet<T>, allocator: ByteBufAllocator) : ByteBuf {
+    fun <T : TSerializable> encode(packet: Packet<T>, allocator: ByteBufAllocator): ByteBuf {
         if (LOG.isTraceEnabled) {
             LOG.trace("Encode: ${packet.header}")
         }
@@ -24,7 +24,7 @@ object PacketCodec {
         return Unpooled.wrappedBuffer(buf, packet.body.retain())
     }
 
-    fun <T: TSerializable> decode(buf: ByteBuf, header: PacketHeader<T>) : Packet<T> {
+    fun <T : TSerializable> decode(buf: ByteBuf, header: PacketHeader<T>): Packet<T> {
         if (LOG.isTraceEnabled) {
             LOG.debug("Decode: ${header.javaClass}")
         }

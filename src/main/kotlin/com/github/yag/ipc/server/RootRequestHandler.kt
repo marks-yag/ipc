@@ -1,8 +1,11 @@
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.*
+import com.github.yag.ipc.Packet
+import com.github.yag.ipc.RequestHeader
+import com.github.yag.ipc.ResponseHeader
+import com.github.yag.ipc.ResponsePacketHeader
+import com.github.yag.ipc.StatusCode
 import io.netty.buffer.Unpooled
-import java.lang.IllegalArgumentException
 import java.util.concurrent.ConcurrentHashMap
 
 class RootRequestHandler : RequestHandler, AutoCloseable {
@@ -13,9 +16,16 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
         handlers[requestType] = handler
     }
 
-    fun set(contentType: String, handler: (Connection, Packet<RequestHeader>, (Packet<ResponseHeader>) -> Unit) -> Unit) {
-        set(contentType, object: RequestHandler {
-            override fun handle(connection: Connection, request: Packet<RequestHeader>, echo: (Packet<ResponseHeader>) -> Unit) {
+    fun set(
+        contentType: String,
+        handler: (Connection, Packet<RequestHeader>, (Packet<ResponseHeader>) -> Unit) -> Unit
+    ) {
+        set(contentType, object : RequestHandler {
+            override fun handle(
+                connection: Connection,
+                request: Packet<RequestHeader>,
+                echo: (Packet<ResponseHeader>) -> Unit
+            ) {
                 handler(connection, request, echo)
             }
         })
@@ -27,18 +37,47 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
         }
     }
 
-    override fun handle(connection: Connection, request: Packet<RequestHeader>, echo: (Packet<ResponseHeader>) -> Unit) {
+    override fun handle(
+        connection: Connection,
+        request: Packet<RequestHeader>,
+        echo: (Packet<ResponseHeader>) -> Unit
+    ) {
         val handler = handlers[request.header.thrift.callType]
         if (handler != null) {
             try {
                 handler.handle(connection, request, echo)
             } catch (e: IllegalArgumentException) {
-                echo(Packet(ResponsePacketHeader(ResponseHeader(request.header.thrift.callId, StatusCode.BAD_REQUEST, 0)), Unpooled.EMPTY_BUFFER))
+                echo(
+                    Packet(
+                        ResponsePacketHeader(
+                            ResponseHeader(
+                                request.header.thrift.callId,
+                                StatusCode.BAD_REQUEST,
+                                0
+                            )
+                        ), Unpooled.EMPTY_BUFFER
+                    )
+                )
             } catch (e: Throwable) {
-                echo(Packet(ResponsePacketHeader(ResponseHeader(request.header.thrift.callId, StatusCode.INTERNAL_ERROR, 0)), Unpooled.EMPTY_BUFFER))
+                echo(
+                    Packet(
+                        ResponsePacketHeader(
+                            ResponseHeader(
+                                request.header.thrift.callId,
+                                StatusCode.INTERNAL_ERROR,
+                                0
+                            )
+                        ), Unpooled.EMPTY_BUFFER
+                    )
+                )
             }
         } else {
-            echo(Packet(ResponsePacketHeader(ResponseHeader(request.header.thrift.callId, StatusCode.NOT_FOUND, 0)), Unpooled.EMPTY_BUFFER))
+            echo(
+                Packet(
+                    ResponsePacketHeader(ResponseHeader(request.header.thrift.callId, StatusCode.NOT_FOUND, 0)),
+                    Unpooled.EMPTY_BUFFER
+                )
+            )
         }
     }
 

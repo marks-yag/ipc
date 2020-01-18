@@ -9,7 +9,6 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
 import org.apache.commons.cli.Options
-import java.nio.ByteBuffer
 
 object IPCBenchServer {
 
@@ -44,7 +43,15 @@ object IPCBenchServer {
         server(config) {
             request {
                 map("req") {
-                    Packet(ResponsePacketHeader(ResponseHeader(it.header.thrift.callId, StatusCode.OK, it.header.thrift.contentLength)), Unpooled.wrappedBuffer(ByteArray(it.header.thrift.contentLength)))
+                    Packet(
+                        ResponsePacketHeader(
+                            ResponseHeader(
+                                it.header.thrift.callId,
+                                StatusCode.OK,
+                                it.header.thrift.contentLength
+                            )
+                        ), Unpooled.wrappedBuffer(ByteArray(it.header.thrift.contentLength))
+                    )
                 }
             }
         }

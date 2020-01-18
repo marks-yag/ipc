@@ -26,9 +26,9 @@ class IPCServerBuilder(var ipcServerConfig: IPCServerConfig, val id: String) {
 }
 
 fun server(
-        config: IPCServerConfig = IPCServerConfig(),
-        id: String = UUID.randomUUID().toString(),
-        init: IPCServerBuilder.() -> Unit
+    config: IPCServerConfig = IPCServerConfig(),
+    id: String = UUID.randomUUID().toString(),
+    init: IPCServerBuilder.() -> Unit
 ): IPCServer {
     val builder = IPCServerBuilder(config, id)
     builder.init()

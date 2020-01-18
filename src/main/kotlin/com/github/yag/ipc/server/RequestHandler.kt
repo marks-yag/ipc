@@ -1,6 +1,8 @@
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.*
+import com.github.yag.ipc.Packet
+import com.github.yag.ipc.RequestHeader
+import com.github.yag.ipc.ResponseHeader
 
 interface RequestHandler {
 

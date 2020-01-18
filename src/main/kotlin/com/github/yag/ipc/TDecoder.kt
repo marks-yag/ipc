@@ -1,12 +1,10 @@
 package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.ByteBufInputStream
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.MessageToMessageDecoder
 import org.apache.thrift.TSerializable
 import org.apache.thrift.protocol.TBinaryProtocol
-import org.apache.thrift.transport.TIOStreamTransport
 
 class TDecoder(private val newObject: () -> TSerializable) : MessageToMessageDecoder<ByteBuf>() {
 
@@ -17,7 +15,7 @@ class TDecoder(private val newObject: () -> TSerializable) : MessageToMessageDec
     companion object {
 
         @JvmStatic
-        fun <T: TSerializable> decode(obj: T, buf: ByteBuf) : T {
+        fun <T : TSerializable> decode(obj: T, buf: ByteBuf): T {
             obj.read(TBinaryProtocol(TByteBufTransport(buf)))
             return obj
         }

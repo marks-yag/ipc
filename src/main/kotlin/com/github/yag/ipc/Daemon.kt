@@ -3,9 +3,9 @@ package com.github.yag.ipc
 import java.util.concurrent.atomic.AtomicBoolean
 
 class Daemon<T : Runnable>(
-        private val runnable: (AtomicBoolean) -> T,
-        name: String = runnable.javaClass.simpleName,
-        val interruptable: Boolean = true
+    private val runnable: (AtomicBoolean) -> T,
+    name: String = runnable.javaClass.simpleName,
+    val interruptable: Boolean = true
 ) : Thread(name), AutoCloseable {
 
     private var shouldShop = AtomicBoolean(false)

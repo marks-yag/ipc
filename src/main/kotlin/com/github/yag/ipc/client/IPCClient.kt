@@ -1,6 +1,24 @@
 package com.github.yag.ipc.client
 
-import com.github.yag.ipc.*
+import com.github.yag.ipc.ConnectRequest
+import com.github.yag.ipc.ConnectionAccepted
+import com.github.yag.ipc.ConnectionRejectException
+import com.github.yag.ipc.ConnectionResponse
+import com.github.yag.ipc.Daemon
+import com.github.yag.ipc.Packet
+import com.github.yag.ipc.PacketCodec
+import com.github.yag.ipc.PacketEncoder
+import com.github.yag.ipc.RequestHeader
+import com.github.yag.ipc.RequestPacketHeader
+import com.github.yag.ipc.ResponseHeader
+import com.github.yag.ipc.ResponsePacketHeader
+import com.github.yag.ipc.StatusCode
+import com.github.yag.ipc.TEncoder
+import com.github.yag.ipc.addThreadName
+import com.github.yag.ipc.applyChannelConfig
+import com.github.yag.ipc.daemon
+import com.github.yag.ipc.metric
+import com.github.yag.ipc.status
 import com.google.common.util.concurrent.SettableFuture
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
@@ -28,15 +46,22 @@ import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.UUID
-import java.util.concurrent.*
+import java.util.concurrent.ConcurrentSkipListMap
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
 class IPCClient(
-        private val config: IPCClientConfig,
-        private val id: String = UUID.randomUUID().toString()
+    private val config: IPCClientConfig,
+    private val id: String = UUID.randomUUID().toString()
 ) : AutoCloseable {
 
     private lateinit var bootstrap: Bootstrap
@@ -90,9 +115,9 @@ class IPCClient(
             executor = Executors.newSingleThreadScheduledExecutor()
             bootstrap = Bootstrap().apply {
                 channel(NioSocketChannel::class.java)
-                        .group(NioEventLoopGroup(config.threads, DefaultThreadFactory("ipc-client-$id", true)))
-                        .applyChannelConfig(config.channelConfig)
-                        .handler(ChildChannelHandler())
+                    .group(NioEventLoopGroup(config.threads, DefaultThreadFactory("ipc-client-$id", true)))
+                    .applyChannelConfig(config.channelConfig)
+                    .handler(ChildChannelHandler())
             }
             closed.set(false)
             currentId = 0L
@@ -129,7 +154,11 @@ class IPCClient(
                 while (iterator.hasNext()) {
                     val next = iterator.next()
                     if (now - next.value.lastContactTimestamp > config.requestTimeoutMs) {
-                        LOG.debug("Handle timeout request, connectionId: {}, requestId: {}.", connection.connectionId, next.key)
+                        LOG.debug(
+                            "Handle timeout request, connectionId: {}, requestId: {}.",
+                            connection.connectionId,
+                            next.key
+                        )
                         iterator.remove()
                         parallelCalls.release()
                         try {
@@ -137,7 +166,12 @@ class IPCClient(
                                 status(next.key, StatusCode.TIMEOUT)
                             )
                         } catch (e: Exception) {
-                            LOG.warn("Callback error, connectionId: {}, requestId: {}.", connection.connectionId, next.key, e)
+                            LOG.warn(
+                                "Callback error, connectionId: {}, requestId: {}.",
+                                connection.connectionId,
+                                next.key,
+                                e
+                            )
                         }
                     } else {
                         break
@@ -182,7 +216,11 @@ class IPCClient(
                                             sendTime.update(System.currentTimeMillis() - start)
                                             parallelRequestContentSize.release(packet.header.thrift.contentLength)
                                             if (LOG.isTraceEnabled) {
-                                                LOG.trace("Released {} then {}.", packet.header.thrift.contentLength, parallelRequestContentSize.availablePermits())
+                                                LOG.trace(
+                                                    "Released {} then {}.",
+                                                    packet.header.thrift.contentLength,
+                                                    parallelRequestContentSize.availablePermits()
+                                                )
                                             }
                                         }
                                     }
@@ -310,9 +348,11 @@ class IPCClient(
             val packet = msg as Packet<ResponseHeader>
 
             val header = packet.header
-            LOG.trace("Received response, connectionId: {}, requestId: {}.",
+            LOG.trace(
+                "Received response, connectionId: {}, requestId: {}.",
                 connection.connectionId,
-                header.thrift.callId)
+                header.thrift.callId
+            )
             doCallback(packet)
         }
 
@@ -324,7 +364,11 @@ class IPCClient(
                     parallelCalls.release()
                 } else {
                     it.lastContactTimestamp = System.currentTimeMillis()
-                    LOG.trace("Continue, connectionId: {}, requestId: {}.", connection.connectionId, header.thrift.callId)
+                    LOG.trace(
+                        "Continue, connectionId: {}, requestId: {}.",
+                        connection.connectionId,
+                        header.thrift.callId
+                    )
                 }
                 it.func(packet)
             }
@@ -377,7 +421,14 @@ class IPCClient(
                 addLast(LengthFieldBasedFrameDecoder(config.maxResponsePacketSize, 0, 4, 0, 4))
                 addLast(LengthFieldPrepender(4, 0))
 
-                addLast(IdleStateHandler(config.heartbeatTimeoutMs, config.heartbeatIntervalMs, config.heartbeatTimeoutMs, TimeUnit.MILLISECONDS))
+                addLast(
+                    IdleStateHandler(
+                        config.heartbeatTimeoutMs,
+                        config.heartbeatIntervalMs,
+                        config.heartbeatTimeoutMs,
+                        TimeUnit.MILLISECONDS
+                    )
+                )
                 addLast(ResponseDecoder())
                 addLast(TEncoder(ConnectRequest::class.java))
                 addLast(PacketEncoder())
@@ -399,7 +450,8 @@ data class RequestWithTime(val request: Packet<RequestHeader>, val timestamp: Lo
 
 fun client(
     config: IPCClientConfig = IPCClientConfig(),
-    init: IPCClientConfig.() -> Unit): IPCClient {
+    init: IPCClientConfig.() -> Unit
+): IPCClient {
     config.init()
     return IPCClient(config)
 }

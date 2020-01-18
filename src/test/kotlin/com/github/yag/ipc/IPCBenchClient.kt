@@ -6,8 +6,6 @@ import com.github.yag.config.ConfigLoader
 import com.github.yag.config.config
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.IPCClientConfig
-import com.github.yag.ipc.client.client
-import com.github.yag.ipc.server.IPCServerConfig
 import io.netty.buffer.Unpooled
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
@@ -15,7 +13,6 @@ import org.apache.commons.cli.Option
 import org.apache.commons.cli.Options
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.nio.ByteBuffer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -69,7 +66,8 @@ object IPCBenchClient {
         val metric = MetricRegistry()
         val callMetric = metric.timer("call")
         val errorMetric = metric.meter("error")
-        val reporter = ConsoleReporter.forRegistry(metric).convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS).build()
+        val reporter = ConsoleReporter.forRegistry(metric).convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
         val client = IPCClient(config)
@@ -78,7 +76,7 @@ object IPCBenchClient {
         repeat(concurrency) { loop ->
             thread {
                 repeat(requests) {
-                    val startMs= System.currentTimeMillis()
+                    val startMs = System.currentTimeMillis()
                     client.send("req", Unpooled.wrappedBuffer(ByteArray(requestBodySize))) {
                         val endMs = System.currentTimeMillis()
                         callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)

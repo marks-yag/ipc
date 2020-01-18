@@ -25,7 +25,7 @@ class TByteBufTransport(private val bf: ByteBuf) : TTransport() {
 
     @Throws(TTransportException::class)
     override fun readAll(buf: ByteArray, off: Int, len: Int): Int {
-        check (bf.readableBytes() >= len) {
+        check(bf.readableBytes() >= len) {
             throw TTransportException("Unexpected end of frame")
         }
         bf.readBytes(buf, off, len)

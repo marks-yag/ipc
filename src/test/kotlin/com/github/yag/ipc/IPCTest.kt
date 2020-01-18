@@ -4,16 +4,16 @@ import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
-import io.netty.buffer.ByteBuf
-import io.netty.buffer.ByteBufUtil
 import io.netty.buffer.Unpooled
-import java.lang.IllegalArgumentException
-import java.nio.ByteBuffer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class IPCTest {
 
@@ -92,7 +92,7 @@ class IPCTest {
     fun testResponseContent() {
         server {
             request {
-                map("any") {request ->
+                map("any") { request ->
                     request.ok(
                         request.body
                     )

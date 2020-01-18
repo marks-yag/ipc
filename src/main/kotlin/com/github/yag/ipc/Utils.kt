@@ -2,11 +2,8 @@ package com.github.yag.ipc
 
 import io.netty.bootstrap.AbstractBootstrap
 import io.netty.bootstrap.Bootstrap
-import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelOption
 import io.netty.channel.WriteBufferWaterMark
-import java.nio.ByteBuffer
-import java.util.concurrent.locks.Lock
 
 fun <T : AbstractBootstrap<*, *>> T.applyChannelConfig(config: ChannelConfig): T {
     option(ChannelOption.CONNECT_TIMEOUT_MILLIS, minOf(config.connectionTimeoutMs, Int.MAX_VALUE.toLong()).toInt())
