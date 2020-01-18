@@ -13,7 +13,7 @@ object PacketCodec {
         if (LOG.isTraceEnabled) {
             LOG.trace("Encode: ${packet.header}")
         }
-        val buf = allocator.buffer()
+        val buf = allocator.ioBuffer()
         val protocol = TBinaryProtocol(
             TByteBufTransport(buf)
         )
@@ -33,7 +33,7 @@ object PacketCodec {
 
         val body = buf.slice(buf.readerIndex(), buf.readableBytes())
         buf.skipBytes(buf.readableBytes())
-        return header.packet(body.retain())
+        return header.packet(body)
     }
 
     private val LOG = LoggerFactory.getLogger(PacketCodec::class.java)
