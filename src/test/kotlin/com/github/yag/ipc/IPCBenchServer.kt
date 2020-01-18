@@ -43,6 +43,7 @@ object IPCBenchServer {
         server(config) {
             request {
                 map("req") {
+                    it.body.release()
                     Packet(
                         ResponsePacketHeader(
                             ResponseHeader(

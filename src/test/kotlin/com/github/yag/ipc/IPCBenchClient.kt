@@ -85,6 +85,7 @@ object IPCBenchClient {
                             errorMetric.mark()
                         }
                         latch.countDown()
+                        it.body.release()
                     }
                 }
             }
