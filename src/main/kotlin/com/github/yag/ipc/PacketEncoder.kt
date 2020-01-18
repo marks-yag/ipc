@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 class PacketEncoder : ChannelOutboundHandlerAdapter() {
 
     override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
-        LOG.debug("Write packet:")
+        LOG.trace("Write packet: {}", msg)
         if (msg is Packet<*>) {
             val buf = PacketCodec.encode(msg, ctx.alloc())
             ctx.write(buf, promise)
