@@ -17,10 +17,10 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
     }
 
     fun set(
-        contentType: String,
+        callType: String,
         handler: (Connection, Packet<RequestHeader>, (Packet<ResponseHeader>) -> Unit) -> Unit
     ) {
-        set(contentType, object : RequestHandler {
+        set(callType, object : RequestHandler {
             override fun handle(
                 connection: Connection,
                 request: Packet<RequestHeader>,
@@ -31,8 +31,8 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
         })
     }
 
-    fun map(contentType: String, map: (Packet<RequestHeader>) -> Packet<ResponseHeader>) {
-        set(contentType) { _, request, echo ->
+    fun map(callType: String, map: (Packet<RequestHeader>) -> Packet<ResponseHeader>) {
+        set(callType) { _, request, echo ->
             echo(map(request))
         }
     }
@@ -70,6 +70,8 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
                         ), Unpooled.EMPTY_BUFFER
                     )
                 )
+            } finally {
+                request.body.release()
             }
         } else {
             echo(

@@ -29,7 +29,7 @@ class IPCClientConfig {
     var maxParallelCalls: Int = 128
 
     @Value
-    var maxParallelRequestContentSize: Int = 1024 * 1024 * 100
+    var maxParallelRequestContentSize: Int = 1024 * 1024 * 16
 
     @Value
     var maxWriteBatchSize: Int = 8192

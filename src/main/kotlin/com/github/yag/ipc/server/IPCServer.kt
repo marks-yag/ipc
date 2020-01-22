@@ -1,5 +1,6 @@
 package com.github.yag.ipc.server
 
+import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejected
@@ -13,7 +14,6 @@ import com.github.yag.ipc.TDecoder
 import com.github.yag.ipc.TEncoder
 import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
-import com.github.yag.ipc.metric
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
@@ -34,6 +34,7 @@ import io.netty.util.concurrent.DefaultThreadFactory
 import org.jetbrains.annotations.TestOnly
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.net.BindException
 import java.net.InetSocketAddress
 import java.util.UUID
@@ -46,6 +47,7 @@ class IPCServer internal constructor(
     private val config: IPCServerConfig,
     private val requestHandler: RequestHandler,
     private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
+    private val metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
 
@@ -212,10 +214,18 @@ class IPCServer internal constructor(
         @Suppress("deprecation", "OverridingDeprecatedMember")
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
             super.exceptionCaught(ctx, cause)
-            if (cause is ReadTimeoutException) {
-                LOG.info("Connection read timeout, connection: {}.", connection.id)
-            } else {
-                LOG.warn("Unknown exception.", cause)
+            when (cause) {
+                is ReadTimeoutException -> {
+                    LOG.info("Connection read timeout, connection: {}.", connection.id)
+                }
+                is IOException -> {
+                    if (LOG.isErrorEnabled) {
+                        LOG.debug("Connection I/O error, connection: {}, exception: {}.", connection.id, cause.toString())
+                    }
+                }
+                else -> {
+                    LOG.warn("Unknown exception.", cause)
+                }
             }
         }
 

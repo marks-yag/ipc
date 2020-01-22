@@ -1,5 +1,6 @@
 package com.github.yag.ipc.client
 
+import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejectException
@@ -17,7 +18,6 @@ import com.github.yag.ipc.TEncoder
 import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
 import com.github.yag.ipc.daemon
-import com.github.yag.ipc.metric
 import com.github.yag.ipc.status
 import com.google.common.util.concurrent.SettableFuture
 import io.netty.bootstrap.Bootstrap
@@ -61,6 +61,7 @@ import kotlin.system.measureTimeMillis
 
 class IPCClient(
     private val config: IPCClientConfig,
+    private val metric: MetricRegistry,
     private val id: String = UUID.randomUUID().toString()
 ) : AutoCloseable {
 
@@ -186,7 +187,7 @@ class IPCClient(
                         try {
                             val list = ArrayList<Packet<RequestHeader>>()
                             var length = 0L
-                            var requestWithTime = queue.poll(1, TimeUnit.SECONDS)
+                            var requestWithTime = queue.poll(1, TimeUnit.MILLISECONDS)
                             if (requestWithTime != null) {
                                 val qt = measureTimeMillis {
                                     var request = requestWithTime.request
@@ -263,7 +264,9 @@ class IPCClient(
     fun send(type: String, buf: ByteBuf): Future<Packet<ResponseHeader>> {
         val future = SettableFuture.create<Packet<ResponseHeader>>()
         send(type, buf) {
-            future.set(it)
+            future.set(it.also {
+                it.body.retain()
+            })
         }
         return future
     }
@@ -371,6 +374,7 @@ class IPCClient(
                     )
                 }
                 it.func(packet)
+                packet.body.release()
             }
         }
 
@@ -450,8 +454,9 @@ data class RequestWithTime(val request: Packet<RequestHeader>, val timestamp: Lo
 
 fun client(
     config: IPCClientConfig = IPCClientConfig(),
+    metric: MetricRegistry = MetricRegistry(),
     init: IPCClientConfig.() -> Unit
 ): IPCClient {
     config.init()
-    return IPCClient(config)
+    return IPCClient(config, metric)
 }

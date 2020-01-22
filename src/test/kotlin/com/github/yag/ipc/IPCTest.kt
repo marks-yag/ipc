@@ -104,6 +104,7 @@ class IPCTest {
             }.use { client ->
                 client.sendSync("any", requestData).let {
                     assertEquals(StatusCode.OK, it.status())
+                    assertEquals(1, it.body.refCnt())
                     assertEquals(requestData, it.body)
                 }
             }

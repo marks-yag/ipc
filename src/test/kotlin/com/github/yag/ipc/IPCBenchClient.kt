@@ -70,28 +70,27 @@ object IPCBenchClient {
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-        val client = IPCClient(config)
+        IPCClient(config, metric).use { client ->
+            val latch = CountDownLatch(concurrency * requests)
+            repeat(concurrency) { loop ->
+                thread {
+                    repeat(requests) {
+                        val startMs = System.currentTimeMillis()
+                        client.send("req", Unpooled.wrappedBuffer(ByteArray(requestBodySize))) {
+                            val endMs = System.currentTimeMillis()
+                            callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
-        val latch = CountDownLatch(concurrency * requests)
-        repeat(concurrency) { loop ->
-            thread {
-                repeat(requests) {
-                    val startMs = System.currentTimeMillis()
-                    client.send("req", Unpooled.wrappedBuffer(ByteArray(requestBodySize))) {
-                        val endMs = System.currentTimeMillis()
-                        callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
-
-                        if (!it.header.thrift.statusCode.isSuccessful()) {
-                            errorMetric.mark()
+                            if (!it.header.thrift.statusCode.isSuccessful()) {
+                                errorMetric.mark()
+                            }
+                            latch.countDown()
                         }
-                        latch.countDown()
-                        it.body.release()
                     }
                 }
             }
+            latch.await(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
         }
 
-        latch.await(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
         reporter.close()
     }
 
