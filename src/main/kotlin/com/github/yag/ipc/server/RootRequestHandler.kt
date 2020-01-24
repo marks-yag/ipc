@@ -8,16 +8,16 @@ import com.github.yag.ipc.StatusCode
 import io.netty.buffer.Unpooled
 import java.util.concurrent.ConcurrentHashMap
 
-class RootRequestHandler : RequestHandler, AutoCloseable {
+class RootRequestHandler<T: Any> : RequestHandler, AutoCloseable {
 
     private val handlers = ConcurrentHashMap<String, RequestHandler>()
 
-    fun set(requestType: String, handler: RequestHandler) {
-        handlers[requestType] = handler
+    fun set(requestType: T, handler: RequestHandler) {
+        handlers[requestType.toString()] = handler
     }
 
     fun set(
-        callType: String,
+        callType: T,
         handler: (Connection, Packet<RequestHeader>, (Packet<ResponseHeader>) -> Unit) -> Unit
     ) {
         set(callType, object : RequestHandler {
@@ -31,7 +31,7 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
         })
     }
 
-    fun map(callType: String, map: (Packet<RequestHeader>) -> Packet<ResponseHeader>) {
+    fun map(callType: T, map: (Packet<RequestHeader>) -> Packet<ResponseHeader>) {
         set(callType) { _, request, echo ->
             echo(map(request))
         }

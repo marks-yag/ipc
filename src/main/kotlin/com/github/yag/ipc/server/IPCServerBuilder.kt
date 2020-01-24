@@ -3,9 +3,9 @@ package com.github.yag.ipc.server
 import com.codahale.metrics.MetricRegistry
 import java.util.UUID
 
-class IPCServerBuilder(var ipcServerConfig: IPCServerConfig, val metric: MetricRegistry, val id: String) {
+class IPCServerBuilder<T: Any>(var ipcServerConfig: IPCServerConfig, val metric: MetricRegistry, val id: String) {
 
-    private val rootHandler = RootRequestHandler()
+    private val rootHandler = RootRequestHandler<T>()
 
     private val connectionHandler = ChainConnectionHandler()
 
@@ -17,7 +17,7 @@ class IPCServerBuilder(var ipcServerConfig: IPCServerConfig, val metric: MetricR
         connectionHandler.init()
     }
 
-    fun request(init: RootRequestHandler.() -> Unit) {
+    fun request(init: RootRequestHandler<T>.() -> Unit) {
         rootHandler.init()
     }
 
@@ -26,13 +26,19 @@ class IPCServerBuilder(var ipcServerConfig: IPCServerConfig, val metric: MetricR
     }
 }
 
-fun server(
+
+fun server(config: IPCServerConfig = IPCServerConfig(),
+            metric: MetricRegistry = MetricRegistry(),
+            id: String = UUID.randomUUID().toString(),
+            init: IPCServerBuilder<String>.() -> Unit) = tserver(config, metric, id, init)
+
+fun <T: Any>tserver(
     config: IPCServerConfig = IPCServerConfig(),
     metric: MetricRegistry = MetricRegistry(),
     id: String = UUID.randomUUID().toString(),
-    init: IPCServerBuilder.() -> Unit
+    init: IPCServerBuilder<T>.() -> Unit
 ): IPCServer {
-    val builder = IPCServerBuilder(config, metric, id)
+    val builder = IPCServerBuilder<T>(config, metric, id)
     builder.init()
     return builder.build()
 }
