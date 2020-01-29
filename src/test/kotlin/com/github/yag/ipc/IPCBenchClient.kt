@@ -11,15 +11,11 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
 import org.apache.commons.cli.Options
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 object IPCBenchClient {
-
-    private val LOG: Logger = LoggerFactory.getLogger(IPCBenchClient::class.java)
 
     private const val configFile = "./bench-client.properties"
 
@@ -32,7 +28,6 @@ object IPCBenchClient {
             it.addOption(Option.builder("n").required(true).hasArg().argName("requests").desc("Number of requests to perform").build())
             it.addOption(Option.builder("c").argName("concurrency").hasArg().desc("Number of multiple requests to make at a time").build())
             it.addOption(Option.builder("s").required(true).hasArg().argName("request-body-size").desc("Size of request body").build())
-            it.addOption(Option.builder("S").required(true).hasArg().argName("response-body-size").desc("Size of response body").build())
         }
 
         val cmd = DefaultParser().parse(options, args)
@@ -60,8 +55,6 @@ object IPCBenchClient {
             1
         }
         val requestBodySize = cmd.getOptionValue("s").toInt()
-        val responseBodySize = cmd.getOptionValue("S").toInt()
-
 
         val metric = MetricRegistry()
         val callMetric = metric.timer("call")
@@ -70,13 +63,18 @@ object IPCBenchClient {
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-        IPCClient<String>(config, metric).use { client ->
-            val latch = CountDownLatch(concurrency * requests)
-            repeat(concurrency) { loop ->
-                thread {
+        val buf = Unpooled.directBuffer(requestBodySize, requestBodySize)
+        buf.writerIndex(requestBodySize)
+        check(buf.readableBytes() == requestBodySize)
+
+        val latch = CountDownLatch(concurrency * requests)
+        repeat(concurrency) { loop ->
+            thread {
+                IPCClient<String>(config, metric).use { client ->
+
                     repeat(requests) {
                         val startMs = System.currentTimeMillis()
-                        client.send("req", Unpooled.wrappedBuffer(ByteArray(requestBodySize))) {
+                        client.send("req", buf) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
@@ -86,10 +84,11 @@ object IPCBenchClient {
                             latch.countDown()
                         }
                     }
+
                 }
             }
-            latch.await(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
         }
+        latch.await(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
 
         reporter.close()
     }

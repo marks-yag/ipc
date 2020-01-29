@@ -329,10 +329,12 @@ class IPCTest {
                 }
 
                 assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).status())
+                assertEquals(1, requestData.refCnt())
 
                 Thread.sleep(5000)
 
                 assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).status())
+                assertEquals(1, requestData.refCnt())
             }
         }
     }
