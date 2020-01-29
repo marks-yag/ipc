@@ -70,7 +70,7 @@ object IPCBenchClient {
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-        IPCClient(config, metric).use { client ->
+        IPCClient<String>(config, metric).use { client ->
             val latch = CountDownLatch(concurrency * requests)
             repeat(concurrency) { loop ->
                 thread {

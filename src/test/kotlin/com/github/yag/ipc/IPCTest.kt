@@ -71,7 +71,7 @@ class IPCTest {
         }
     }
 
-    private fun doTest(client: IPCClient) {
+    private fun doTest(client: IPCClient<String>) {
         client.sendSync("foo", requestData).let {
             assertEquals(StatusCode.OK, it.status())
         }

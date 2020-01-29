@@ -59,7 +59,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
-class IPCClient(
+class IPCClient<T: Any>(
     private val config: IPCClientConfig,
     private val metric: MetricRegistry,
     private val id: String = UUID.randomUUID().toString()
@@ -239,9 +239,9 @@ class IPCClient(
         }
     }
 
-    fun send(type: String, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Unit) {
+    fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Unit) {
         lock.withLock {
-            val header = RequestHeader(++currentId, type, buf.readableBytes())
+            val header = RequestHeader(++currentId, type.toString(), buf.readableBytes())
             val request = Packet(RequestPacketHeader(header), buf)
 
             if (!connected.get()) {
@@ -261,7 +261,7 @@ class IPCClient(
         }
     }
 
-    fun send(type: String, buf: ByteBuf): Future<Packet<ResponseHeader>> {
+    fun send(type: T, buf: ByteBuf): Future<Packet<ResponseHeader>> {
         val future = SettableFuture.create<Packet<ResponseHeader>>()
         send(type, buf) {
             future.set(it.also {
@@ -271,7 +271,7 @@ class IPCClient(
         return future
     }
 
-    fun sendSync(type: String, data: ByteBuf): Packet<ResponseHeader> {
+    fun sendSync(type: T, data: ByteBuf): Packet<ResponseHeader> {
         return send(type, data).get()
     }
 
@@ -455,8 +455,13 @@ data class RequestWithTime(val request: Packet<RequestHeader>, val timestamp: Lo
 fun client(
     config: IPCClientConfig = IPCClientConfig(),
     metric: MetricRegistry = MetricRegistry(),
+    init: IPCClientConfig.() -> Unit) = tclient<String>(config, metric, init)
+
+fun <T: Any>tclient(
+    config: IPCClientConfig = IPCClientConfig(),
+    metric: MetricRegistry = MetricRegistry(),
     init: IPCClientConfig.() -> Unit
-): IPCClient {
+): IPCClient<T> {
     config.init()
     return IPCClient(config, metric)
 }
