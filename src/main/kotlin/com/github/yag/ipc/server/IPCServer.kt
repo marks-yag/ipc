@@ -213,7 +213,6 @@ class IPCServer internal constructor(
 
         @Suppress("deprecation", "OverridingDeprecatedMember")
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-            super.exceptionCaught(ctx, cause)
             when (cause) {
                 is ReadTimeoutException -> {
                     LOG.info("Connection read timeout, connection: {}.", connection.id)
