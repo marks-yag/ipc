@@ -94,11 +94,14 @@ class IPCTest {
             client {
                 endpoint = server.endpoint
             }.use { client ->
+                assertEquals(1, requestData.refCnt())
                 client.sendSync("any", requestData).let {
                     assertEquals(StatusCode.OK, it.status())
                     assertEquals(1, it.body.refCnt())
                     assertEquals(requestData, it.body)
+                    assertEquals(1, requestData.refCnt())
                 }
+                assertEquals(1, requestData.refCnt())
             }
         }
     }
@@ -319,6 +322,7 @@ class IPCTest {
                 }
 
                 assertEquals(StatusCode.CONNECTION_ERROR, client.sendSync("any", requestData).status())
+                assertEquals(1, requestData.refCnt())
 
                 eventually(5000) {
                     assertTrue(client.isConnected())

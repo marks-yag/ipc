@@ -224,6 +224,7 @@ class IPCClient<T: Any>(
                                                 )
                                             }
                                         }
+                                        packet.body.release()
                                     }
 
                                     channel.flush()
@@ -245,19 +246,20 @@ class IPCClient<T: Any>(
             val request = Packet(RequestPacketHeader(header), buf)
 
             if (!connected.get()) {
+                request.body.release()
                 callback(request.status(StatusCode.CONNECTION_ERROR))
+            } else {
+                blockTime.update(measureTimeMillis {
+                    parallelCalls.acquire()
+                })
+
+                val timestamp = System.currentTimeMillis()
+                callbacks[header.callId] = Callback(timestamp, callback)
+
+                parallelRequestContentSize.acquire(header.contentLength)
+                queue.offer(RequestWithTime(request, timestamp), Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+                LOG.trace("Queued request: {}.", header.callId)
             }
-
-            blockTime.update(measureTimeMillis {
-                parallelCalls.acquire()
-            })
-
-            val timestamp = System.currentTimeMillis()
-            callbacks[header.callId] = Callback(timestamp, callback)
-
-            parallelRequestContentSize.acquire(header.contentLength)
-            queue.offer(RequestWithTime(request, timestamp), Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-            LOG.trace("Queued request: {}.", header.callId)
         }
     }
 
@@ -298,6 +300,9 @@ class IPCClient<T: Any>(
 
                 LOG.debug("IPC client closed, make all pending requests timeout.")
                 handlePendingRequests()
+                queue.forEach {
+                    it.request.body.release()
+                }
             }
         }
     }
