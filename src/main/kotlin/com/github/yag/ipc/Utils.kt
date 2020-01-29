@@ -17,7 +17,7 @@ fun <T : AbstractBootstrap<*, *>> T.applyChannelConfig(config: ChannelConfig): T
 }
 
 fun StatusCode.isSuccessful(): Boolean {
-    return (100..199).contains(value)
+    return value >= 0
 }
 
 fun <T> addThreadName(postfix: String, body: () -> T): T {
