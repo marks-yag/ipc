@@ -61,9 +61,6 @@ class IPCTest {
                 map("foo") { request ->
                     request.ok()
                 }
-                map("bar") { request ->
-                    request.status(StatusCode.BAD_REQUEST)
-                }
             }
         }.use { server ->
             client {
@@ -78,11 +75,6 @@ class IPCTest {
         client.sendSync("foo", requestData).let {
             assertEquals(StatusCode.OK, it.status())
         }
-
-        client.sendSync("bar", requestData).let {
-            assertEquals(StatusCode.BAD_REQUEST, it.status())
-        }
-
         client.sendSync("not-exist", requestData).let {
             assertEquals(StatusCode.NOT_FOUND, it.status())
         }
@@ -161,7 +153,7 @@ class IPCTest {
             client {
                 endpoint = server.endpoint
             }.use { client ->
-                assertEquals(StatusCode.BAD_REQUEST, client.sendSync("foo", requestData).status())
+                assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("foo", requestData).status())
                 assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("bar", requestData).status())
             }
         }

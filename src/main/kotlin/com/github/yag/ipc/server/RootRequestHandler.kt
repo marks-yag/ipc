@@ -46,18 +46,6 @@ class RootRequestHandler : RequestHandler, AutoCloseable {
         if (handler != null) {
             try {
                 handler.handle(connection, request, echo)
-            } catch (e: IllegalArgumentException) {
-                echo(
-                    Packet(
-                        ResponsePacketHeader(
-                            ResponseHeader(
-                                request.header.thrift.callId,
-                                StatusCode.BAD_REQUEST,
-                                0
-                            )
-                        ), Unpooled.EMPTY_BUFFER
-                    )
-                )
             } catch (e: Throwable) {
                 echo(
                     Packet(
