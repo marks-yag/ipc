@@ -240,7 +240,7 @@ class IPCClient<T: Any>(
         }
     }
 
-    fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Unit) {
+    fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
             val header = RequestHeader(++currentId, type.toString(), buf.readableBytes())
             val request = Packet(RequestPacketHeader(header), buf)
@@ -453,7 +453,7 @@ class IPCClient<T: Any>(
 
 }
 
-data class Callback(var lastContactTimestamp: Long, val func: (Packet<ResponseHeader>) -> Unit)
+data class Callback(var lastContactTimestamp: Long, val func: (Packet<ResponseHeader>) -> Any?)
 
 data class RequestWithTime(val request: Packet<RequestHeader>, val timestamp: Long)
 
