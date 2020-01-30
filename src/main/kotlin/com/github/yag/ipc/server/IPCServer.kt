@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.BindException
 import java.net.InetSocketAddress
+import java.nio.channels.ClosedChannelException
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -217,10 +218,20 @@ class IPCServer internal constructor(
                 is ReadTimeoutException -> {
                     LOG.info("Connection read timeout, connection: {}.", connection.id)
                 }
-                is IOException -> {
-                    if (LOG.isErrorEnabled) {
-                        LOG.debug("Connection I/O error, connection: {}, exception: {}.", connection.id, cause.toString())
+                is ClosedChannelException -> {
+                    if (LOG.isDebugEnabled) {
+                        LOG.debug(
+                            "Connection closed, connection: {}.",
+                            connection.id
+                        )
                     }
+                }
+                is IOException -> {
+                    when (cause.message) {
+                        "Broken pipe", "Connection reset by peer" -> LOG.debug("Connection broken, connection: {}, cause: {}.", connection.id, cause.toString())
+                        else -> LOG.debug("Connection I/O error, connection: {}.", connection.id, cause)
+                    }
+
                 }
                 else -> {
                     LOG.warn("Unknown exception.", cause)

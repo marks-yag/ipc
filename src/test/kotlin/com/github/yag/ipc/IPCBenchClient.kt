@@ -69,7 +69,6 @@ object IPCBenchClient {
         repeat(concurrency) { loop ->
             thread {
                 IPCClient<String>(config, metric).use { client ->
-
                     repeat(requests) {
                         val startMs = System.currentTimeMillis()
                         val buf = createRequestData(requestBodySize)
@@ -85,7 +84,6 @@ object IPCBenchClient {
                         }
 
                     }
-
                 }
             }
         }

@@ -280,7 +280,7 @@ class IPCClient<T: Any>(
     override fun close() {
         if (closed.compareAndSet(false, true)) {
             addThreadName(id) {
-                LOG.debug("IPC client closing...")
+                LOG.info("IPC client closing...")
                 release()
             }
         }
@@ -298,7 +298,7 @@ class IPCClient<T: Any>(
                 channel.eventLoop().shutdownGracefully()
                 executor.shutdown()
 
-                LOG.debug("IPC client closed, make all pending requests timeout.")
+                LOG.info("IPC client closed, make all pending requests timeout.")
                 handlePendingRequests()
                 queue.forEach {
                     it.request.body.release()
