@@ -4,11 +4,14 @@ import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
+import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,7 +20,24 @@ import kotlin.test.fail
 
 class IPCTest {
 
-    private val requestData = Unpooled.wrappedBuffer("Ping".toByteArray())
+    private lateinit var requestData: ByteBuf
+
+    private lateinit var responseData: ByteBuf
+
+
+    @BeforeTest
+    fun before() {
+        requestData = Unpooled.directBuffer().writeBytes("Ping".toByteArray())
+        responseData = Unpooled.directBuffer().writeBytes("Pong".toByteArray())
+    }
+
+    @AfterTest
+    fun after() {
+        assertEquals(1, requestData.refCnt())
+        requestData.release()
+        assertEquals(1, responseData.refCnt())
+        responseData.release()
+    }
 
     @Test
     fun testConnectionHandler() {
@@ -59,7 +79,7 @@ class IPCTest {
         server {
             request {
                 map("foo") { request ->
-                    request.ok()
+                    request.ok(responseData)
                 }
             }
         }.use { server ->
@@ -74,9 +94,11 @@ class IPCTest {
     private fun doTest(client: IPCClient<String>) {
         client.sendSync("foo", requestData).let {
             assertEquals(StatusCode.OK, it.status())
+            it.body.release()
         }
         client.sendSync("not-exist", requestData).let {
             assertEquals(StatusCode.NOT_FOUND, it.status())
+            it.body.release()
         }
     }
 
@@ -85,9 +107,7 @@ class IPCTest {
         server {
             request {
                 map("any") { request ->
-                    request.ok(
-                        request.body
-                    )
+                    request.ok(responseData)
                 }
             }
         }.use { server ->
@@ -98,8 +118,8 @@ class IPCTest {
                 client.sendSync("any", requestData).let {
                     assertEquals(StatusCode.OK, it.status())
                     assertEquals(1, it.body.refCnt())
-                    assertEquals(requestData, it.body)
-                    assertEquals(1, requestData.refCnt())
+                    assertEquals(responseData, it.body)
+                    it.body.release()
                 }
                 assertEquals(1, requestData.refCnt())
             }

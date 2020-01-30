@@ -193,10 +193,12 @@ class IPCServer internal constructor(
 
                 if (ctx.channel().eventLoop().inEventLoop()) {
                     ctx.write(it, ctx.voidPromise())
+                    it.body.release()
                 } else {
                     try {
                         ctx.channel().eventLoop().execute {
                             ctx.write(it, ctx.voidPromise())
+                            it.body.release()
                         }
                     } catch (e: RejectedExecutionException) {
                         LOG.info("Ignored pending response: {}.", it.header.thrift.callId)
