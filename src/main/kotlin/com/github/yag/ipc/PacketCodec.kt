@@ -33,7 +33,7 @@ object PacketCodec {
 
         val body = buf.slice(buf.readerIndex(), buf.readableBytes())
         buf.skipBytes(buf.readableBytes())
-        return header.packet(body)
+        return header.packet(body.retain())
     }
 
     private val LOG = LoggerFactory.getLogger(PacketCodec::class.java)

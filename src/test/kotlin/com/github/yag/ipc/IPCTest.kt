@@ -79,7 +79,7 @@ class IPCTest {
         server {
             request {
                 map("foo") { request ->
-                    request.ok(responseData)
+                    request.ok(responseData.retain())
                 }
             }
         }.use { server ->
@@ -107,7 +107,7 @@ class IPCTest {
         server {
             request {
                 map("any") { request ->
-                    request.ok(responseData)
+                    request.ok(responseData.retain())
                 }
             }
         }.use { server ->

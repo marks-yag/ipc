@@ -1,15 +1,17 @@
 package com.github.yag.ipc
 
+import com.codahale.metrics.ConsoleReporter
+import com.codahale.metrics.MetricRegistry
 import com.github.yag.config.ConfigLoader
 import com.github.yag.config.config
 import com.github.yag.ipc.server.IPCServerConfig
 import com.github.yag.ipc.server.server
 import io.netty.buffer.ByteBufAllocator
-import io.netty.buffer.Unpooled
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
 import org.apache.commons.cli.Options
+import java.util.concurrent.TimeUnit
 
 object IPCBenchServer {
 
@@ -48,10 +50,21 @@ object IPCBenchServer {
             it.writerIndex(responseBodySize)
         }
 
-        server(config) {
+        val metric = MetricRegistry()
+        val callMetric = metric.meter("call")
+        val readMetric = metric.meter("read")
+        val writeMetric = metric.meter("write")
+        val reporter = ConsoleReporter.forRegistry(metric).convertRatesTo(TimeUnit.SECONDS)
+            .convertDurationsTo(TimeUnit.MILLISECONDS).build()
+        reporter.start(1, TimeUnit.SECONDS)
+
+        server(config, metric) {
             request {
                 map("req") {
-                    it.ok(buf)
+                    callMetric.mark()
+                    readMetric.mark(it.header.thrift.contentLength.toLong())
+                    writeMetric.mark(buf.readableBytes().toLong())
+                    it.ok(buf.retain())
                 }
             }
         }

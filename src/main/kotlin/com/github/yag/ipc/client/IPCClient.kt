@@ -243,7 +243,7 @@ class IPCClient<T: Any>(
     fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
             val header = RequestHeader(++currentId, type.toString(), buf.readableBytes())
-            val request = Packet(RequestPacketHeader(header), buf)
+            val request = Packet(RequestPacketHeader(header), buf.retain())
 
             if (!connected.get()) {
                 request.body.release()

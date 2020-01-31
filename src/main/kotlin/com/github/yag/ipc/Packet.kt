@@ -2,12 +2,9 @@ package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
-import io.netty.util.ReferenceCounted
 import org.apache.thrift.TSerializable
 
-class Packet<T : TSerializable>(val header: PacketHeader<T>, body: ByteBuf) {
-
-    val body = body.retain()
+class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: ByteBuf) {
 
     fun isHeartbeat() = header.isHeartbeat(header.thrift)
 

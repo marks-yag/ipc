@@ -8,7 +8,6 @@ import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.IPCClientConfig
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
-import io.netty.buffer.Unpooled
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
