@@ -6,4 +6,4 @@ class ResponsePacketHeader(thrift: ResponseHeader = ResponseHeader()) : PacketHe
     it.callId == -1L
 })
 
-fun Packet<ResponseHeader>.status() = header.thrift.statusCode
+fun Packet<ResponseHeader>.status(): StatusCode = header.thrift.statusCode
