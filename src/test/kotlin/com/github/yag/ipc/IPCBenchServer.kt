@@ -23,8 +23,6 @@ object IPCBenchServer {
             it.addOption("h", "help", false, "Show this help message.")
             it.addOption(Option.builder("f").longOpt("config").hasArg().argName("config file").desc("Configuration file path in classpath or absolute").build())
             it.addOption(Option.builder("D").argName("property=value").numberOfArgs(2).valueSeparator('=').desc("Override configuration value").build())
-            it.addOption(Option.builder("s").required(true).hasArg().argName("response-body-size").desc("Size of response body").build())
-
         }
 
         val cmd = DefaultParser().parse(options, args)
@@ -43,11 +41,10 @@ object IPCBenchServer {
             if (cmd.hasOption("D")) {
                 ConfigLoader.override(it, cmd.getOptionProperties("D"))
             }
-        }.config(IPCServerConfig::class)
+        }.config(IPCBenchServerConfig::class)
 
-        val responseBodySize = cmd.getOptionValue("s").toInt()
-        val buf = ByteBufAllocator.DEFAULT.directBuffer(responseBodySize, responseBodySize).also {
-            it.writerIndex(responseBodySize)
+        val buf = ByteBufAllocator.DEFAULT.directBuffer(config.responseBodySize, config.responseBodySize).also {
+            it.writerIndex(config.responseBodySize)
         }
 
         val metric = MetricRegistry()
@@ -58,7 +55,7 @@ object IPCBenchServer {
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-        server(config, metric) {
+        server(config.ipc, metric) {
             request {
                 map("req") {
                     callMetric.mark()

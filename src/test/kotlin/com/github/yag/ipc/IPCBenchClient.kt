@@ -26,9 +26,6 @@ object IPCBenchClient {
             it.addOption("h", "help", false, "Show this help message.")
             it.addOption(Option.builder("f").argName("config-file").desc("Configuration file path in classpath or absolute").build())
             it.addOption(Option.builder("D").argName("property=value").numberOfArgs(2).valueSeparator('=').desc("Override configuration value").build())
-            it.addOption(Option.builder("n").required(true).hasArg().argName("requests").desc("Number of requests to perform").build())
-            it.addOption(Option.builder("c").argName("concurrency").hasArg().desc("Number of multiple requests to make at a time").build())
-            it.addOption(Option.builder("s").required(true).hasArg().argName("request-body-size").desc("Size of request body").build())
         }
 
         val cmd = DefaultParser().parse(options, args)
@@ -47,15 +44,7 @@ object IPCBenchClient {
             if (cmd.hasOption("D")) {
                 ConfigLoader.override(it, cmd.getOptionProperties("D"))
             }
-        }.config(IPCClientConfig::class)
-
-        val requests = cmd.getOptionValue("n").toInt()
-        val concurrency = if (cmd.hasOption("c")) {
-            cmd.getOptionValue("c").toInt()
-        } else {
-            1
-        }
-        val requestBodySize = cmd.getOptionValue("s").toInt()
+        }.config(IPCBenchClientConfig::class)
 
         val metric = MetricRegistry()
         val callMetric = metric.timer("call")
@@ -64,13 +53,13 @@ object IPCBenchClient {
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-        val latch = CountDownLatch(concurrency * requests)
-        repeat(concurrency) { loop ->
+        val latch = CountDownLatch(config.clients * config.requests)
+        repeat(config.clients) { loop ->
             thread {
-                IPCClient<String>(config, metric).use { client ->
-                    repeat(requests) {
+                IPCClient<String>(config.ipc, metric).use { client ->
+                    repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
-                        val buf = createRequestData(requestBodySize)
+                        val buf = createRequestData(config.requestBodySize)
                         client.send("req", buf) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
