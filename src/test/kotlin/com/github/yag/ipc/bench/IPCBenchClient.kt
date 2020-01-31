@@ -2,16 +2,11 @@ package com.github.yag.ipc.bench
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.config.ConfigLoader
-import com.github.yag.config.config
+import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.isSuccessful
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
-import org.apache.commons.cli.DefaultParser
-import org.apache.commons.cli.HelpFormatter
-import org.apache.commons.cli.Option
-import org.apache.commons.cli.Options
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -22,29 +17,11 @@ object IPCBenchClient {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        val options = Options().also {
-            it.addOption("h", "help", false, "Show this help message.")
-            it.addOption(Option.builder("f").argName("config-file").desc("Configuration file path in classpath or absolute").build())
-            it.addOption(Option.builder("D").argName("property=value").numberOfArgs(2).valueSeparator('=').desc("Override configuration value").build())
-        }
+        val config = Utils.getConfig(IPCBenchClientConfig::class.java, configFile, args) ?: return
 
-        val cmd = DefaultParser().parse(options, args)
-        if (cmd.hasOption("h")) {
-            HelpFormatter().printHelp("[options]", "Options:", options, "")
-            return
+        val buf = ByteBufAllocator.DEFAULT.directBuffer(config.requestBodySize, config.requestBodySize).also {
+            it.writerIndex(config.requestBodySize)
         }
-
-        val config = ConfigLoader.load(
-            if (cmd.hasOption("config")) {
-                cmd.getOptionValue("config")
-            } else {
-                configFile
-            }
-        ).also {
-            if (cmd.hasOption("D")) {
-                ConfigLoader.override(it, cmd.getOptionProperties("D"))
-            }
-        }.config(IPCBenchClientConfig::class)
 
         val metric = MetricRegistry()
         val callMetric = metric.timer("call")
@@ -59,8 +36,6 @@ object IPCBenchClient {
                 IPCClient<String>(config.ipc, metric).use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
-                        val buf =
-                            createRequestData(config.requestBodySize)
                         client.send("req", buf) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
@@ -69,7 +44,6 @@ object IPCBenchClient {
                                 errorMetric.mark()
                             }
                             latch.countDown()
-                            buf.release()
                         }
 
                     }
@@ -79,13 +53,6 @@ object IPCBenchClient {
         latch.await(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
 
         reporter.close()
-    }
-
-    private fun createRequestData(requestBodySize: Int) : ByteBuf {
-        val buf = ByteBufAllocator.DEFAULT.directBuffer(requestBodySize, requestBodySize)
-        buf.writerIndex(requestBodySize)
-        check(buf.readableBytes() == requestBodySize)
-        return buf
     }
 
 }

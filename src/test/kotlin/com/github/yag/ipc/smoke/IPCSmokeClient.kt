@@ -27,7 +27,6 @@ object IPCSmokeClient {
             it.addOption("h", "help", false, "Show this help message.")
             it.addOption(Option.builder("f").argName("config-file").desc("Configuration file path in classpath or absolute").build())
             it.addOption(Option.builder("D").argName("property=value").numberOfArgs(2).valueSeparator('=').desc("Override configuration value").build())
-            it.addOption(Option.builder("n").required(true).hasArg().argName("requests").desc("Number of requests to perform").build())
         }
 
         val cmd = DefaultParser().parse(options, args)
