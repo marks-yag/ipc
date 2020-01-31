@@ -1,11 +1,11 @@
-package com.github.yag.ipc
+package com.github.yag.ipc.bench
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
 import com.github.yag.config.ConfigLoader
 import com.github.yag.config.config
 import com.github.yag.ipc.client.IPCClient
-import com.github.yag.ipc.client.IPCClientConfig
+import com.github.yag.ipc.isSuccessful
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
 import org.apache.commons.cli.DefaultParser
@@ -59,7 +59,8 @@ object IPCBenchClient {
                 IPCClient<String>(config.ipc, metric).use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
-                        val buf = createRequestData(config.requestBodySize)
+                        val buf =
+                            createRequestData(config.requestBodySize)
                         client.send("req", buf) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)

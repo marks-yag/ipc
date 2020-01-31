@@ -1,4 +1,4 @@
-package com.github.yag.ipc
+package com.github.yag.ipc.smoke
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
@@ -6,6 +6,7 @@ import com.github.yag.config.ConfigLoader
 import com.github.yag.config.config
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.IPCClientConfig
+import com.github.yag.ipc.isSuccessful
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
 import org.apache.commons.cli.DefaultParser
@@ -68,7 +69,8 @@ object IPCSmokeClient {
                 IPCClient<String>(config, metric).use { client ->
                     repeat(requests) {
                         val startMs = System.currentTimeMillis()
-                        val buf = createRequestData(requestBodySize)
+                        val buf =
+                            createRequestData(requestBodySize)
                         client.send("req", buf) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)

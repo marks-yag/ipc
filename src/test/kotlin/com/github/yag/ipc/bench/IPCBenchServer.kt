@@ -1,10 +1,10 @@
-package com.github.yag.ipc
+package com.github.yag.ipc.bench
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
 import com.github.yag.config.ConfigLoader
 import com.github.yag.config.config
-import com.github.yag.ipc.server.IPCServerConfig
+import com.github.yag.ipc.ok
 import com.github.yag.ipc.server.server
 import io.netty.buffer.ByteBufAllocator
 import org.apache.commons.cli.DefaultParser

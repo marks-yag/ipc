@@ -1,4 +1,4 @@
-package com.github.yag.ipc
+package com.github.yag.ipc.bench
 
 import com.github.yag.config.Value
 import com.github.yag.ipc.client.IPCClientConfig
