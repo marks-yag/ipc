@@ -123,6 +123,8 @@ class IPCClient<T: Any>(
             closed.set(false)
             currentId = 0L
             connectFuture = SettableFuture.create<ConnectionAccepted>()
+
+            var succ = false
             try {
                 channel = bootstrap.connect(config.endpoint).sync().channel().also {
                     val connectionRequest = ConnectRequest("V1")
@@ -132,12 +134,17 @@ class IPCClient<T: Any>(
                     it.writeAndFlush(connectionRequest)
                     lastContact = System.currentTimeMillis()
                 }
+                succ = true
             } catch (e: InterruptedException) {
                 throw SocketTimeoutException("Connect to ipc server timeout and interrupted.")
             } catch (e: ConnectException) {
                 throw ConnectException(e.message) //make stack clear
             } catch (e: SocketException) {
                 throw SocketException(e.message)
+            } finally {
+                if (!succ) {
+                    bootstrap.config().group().shutdownGracefully().sync()
+                }
             }
 
             LOG.debug("New ipc client created.")
