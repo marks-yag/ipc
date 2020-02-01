@@ -16,7 +16,7 @@ object IPCBenchServer {
     fun main(args: Array<String>) {
         val config = Utils.getConfig(IPCBenchServerConfig::class.java, configFile, args) ?: return
 
-        val buf = Utils.createRequestData(config.responseBodySize)
+        val buf = Utils.createByteBuf(config.responseBodySize)
 
         val metric = MetricRegistry()
         val callMetric = metric.meter("call")

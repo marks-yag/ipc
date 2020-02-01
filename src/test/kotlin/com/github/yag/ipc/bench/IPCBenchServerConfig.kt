@@ -6,7 +6,7 @@ import com.github.yag.ipc.server.IPCServerConfig
 class IPCBenchServerConfig {
 
     @Value
-    val responseBodySize = 0
+    val responseBodySize = 1024 * 1024
 
     @Value
     val ipc = IPCServerConfig()

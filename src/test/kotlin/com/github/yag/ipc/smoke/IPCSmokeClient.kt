@@ -2,98 +2,62 @@ package com.github.yag.ipc.smoke
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.config.ConfigLoader
-import com.github.yag.config.config
+import com.github.yag.ipc.CallType
+import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.IPCClient
-import com.github.yag.ipc.client.IPCClientConfig
 import com.github.yag.ipc.isSuccessful
-import io.netty.buffer.ByteBuf
-import io.netty.buffer.ByteBufAllocator
-import org.apache.commons.cli.DefaultParser
-import org.apache.commons.cli.HelpFormatter
-import org.apache.commons.cli.Option
-import org.apache.commons.cli.Options
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import kotlin.random.Random
 
 object IPCSmokeClient {
 
-    private const val configFile = "./bench-client.properties"
+    private const val configFile = "./smoke-client.properties"
 
     @JvmStatic
     fun main(args: Array<String>) {
-        val options = Options().also {
-            it.addOption("h", "help", false, "Show this help message.")
-            it.addOption(Option.builder("f").argName("config-file").desc("Configuration file path in classpath or absolute").build())
-            it.addOption(Option.builder("D").argName("property=value").numberOfArgs(2).valueSeparator('=').desc("Override configuration value").build())
-        }
-
-        val cmd = DefaultParser().parse(options, args)
-        if (cmd.hasOption("h")) {
-            HelpFormatter().printHelp("[options]", "Options:", options, "")
-            return
-        }
-
-        val config = ConfigLoader.load(
-            if (cmd.hasOption("config")) {
-                cmd.getOptionValue("config")
-            } else {
-                configFile
-            }
-        ).also {
-            if (cmd.hasOption("D")) {
-                ConfigLoader.override(it, cmd.getOptionProperties("D"))
-            }
-        }.config(IPCClientConfig::class)
-
-        val requests = cmd.getOptionValue("n").toInt()
-        val concurrency = if (cmd.hasOption("c")) {
-            cmd.getOptionValue("c").toInt()
-        } else {
-            1
-        }
-        val requestBodySize = cmd.getOptionValue("s").toInt()
+        val config = Utils.getConfig(IPCSmokeClientConfig::class.java, configFile, args) ?: return
 
         val metric = MetricRegistry()
         val callMetric = metric.timer("call")
         val errorMetric = metric.meter("error")
+        val clients = metric.meter("clients")
         val reporter = ConsoleReporter.forRegistry(metric).convertRatesTo(TimeUnit.SECONDS)
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-        val latch = CountDownLatch(concurrency * requests)
-        repeat(concurrency) { loop ->
+        val clientSemaphore = Semaphore(config.clients)
+
+        val random = Random(System.currentTimeMillis())
+
+        while (true) {
+            clientSemaphore.acquire()
             thread {
-                IPCClient<String>(config, metric).use { client ->
-                    repeat(requests) {
+                val aliveMs = random.nextLong(config.minAliveMs, config.maxAliveMs)
+                val stopTime = System.currentTimeMillis() + aliveMs
+                IPCClient<CallType>(config.ipc, metric).use { client ->
+                    clients.mark()
+                    while (true) {
                         val startMs = System.currentTimeMillis()
-                        val buf =
-                            createRequestData(requestBodySize)
-                        client.send("req", buf) {
+                        if (startMs < stopTime) {
+                            break
+                        }
+                        val buf = Utils.createByteBuf(random.nextInt(config.minRequestBodySize, config.maxRequestBodySize))
+                        client.send(CallType.values().random(), buf) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
                             if (!it.header.thrift.statusCode.isSuccessful()) {
                                 errorMetric.mark()
                             }
-                            latch.countDown()
                             buf.release()
                         }
 
                     }
                 }
+                clientSemaphore.release()
             }
         }
-        latch.await(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-
-        reporter.close()
-    }
-
-    private fun createRequestData(requestBodySize: Int) : ByteBuf {
-        val buf = ByteBufAllocator.DEFAULT.directBuffer(requestBodySize, requestBodySize)
-        buf.writerIndex(requestBodySize)
-        check(buf.readableBytes() == requestBodySize)
-        return buf
     }
 }

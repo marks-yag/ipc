@@ -37,7 +37,7 @@ object Utils {
         }.config(clazz)
     }
 
-    fun createRequestData(size: Int) : ByteBuf {
+    fun createByteBuf(size: Int) : ByteBuf {
         return ByteBufAllocator.DEFAULT.directBuffer(size, size).also {
             it.writerIndex(size)
         }

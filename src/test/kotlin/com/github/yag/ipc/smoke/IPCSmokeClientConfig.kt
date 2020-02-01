@@ -6,16 +6,19 @@ import com.github.yag.ipc.client.IPCClientConfig
 class IPCSmokeClientConfig {
 
     @Value
-    var clients = 1
+    var clients = 8
 
     @Value
-    var restartIntervalMs = 10000
+    var minAliveMs = 0L
 
     @Value
-    var requests = 1_000_000L
+    var maxAliveMs = 3600 * 24 * 1000L
 
     @Value
-    var requestBodySize = 1024
+    var minRequestBodySize = 0
+
+    @Value
+    var maxRequestBodySize = 1024 * 1024
 
     @Value
     val ipc = IPCClientConfig()

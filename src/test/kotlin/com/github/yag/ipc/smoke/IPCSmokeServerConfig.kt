@@ -9,7 +9,10 @@ class IPCSmokeServerConfig {
     var restartIntervalMs = 10000
 
     @Value
-    val responseBodySize = 1024
+    var minResponseBodySize = 0
+
+    @Value
+    var maxResponseBodySize = 1024 * 1024
 
     @Value
     val ipc = IPCServerConfig()
