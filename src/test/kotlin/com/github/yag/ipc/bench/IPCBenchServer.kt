@@ -2,9 +2,10 @@ package com.github.yag.ipc.bench
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
+import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.ok
-import com.github.yag.ipc.server.server
+import com.github.yag.ipc.server.tserver
 import io.netty.buffer.ByteBufAllocator
 import java.util.concurrent.TimeUnit
 
@@ -28,14 +29,17 @@ object IPCBenchServer {
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-        server(config.ipc, metric) {
+        tserver<CallType>(config.ipc, metric) {
             request {
-                map("req") {
-                    callMetric.mark()
-                    readMetric.mark(it.header.thrift.contentLength.toLong())
-                    writeMetric.mark(buf.readableBytes().toLong())
-                    it.ok(buf.retain())
+                CallType.values().forEach { callType ->
+                    map(callType) {
+                        callMetric.mark()
+                        readMetric.mark(it.header.thrift.contentLength.toLong())
+                        writeMetric.mark(buf.readableBytes().toLong())
+                        it.ok(buf.retain())
+                    }
                 }
+
             }
         }
     }
