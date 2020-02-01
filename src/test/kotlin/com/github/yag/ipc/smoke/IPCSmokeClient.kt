@@ -6,6 +6,7 @@ import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.isSuccessful
+import org.slf4j.LoggerFactory
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -36,11 +37,13 @@ object IPCSmokeClient {
             thread {
                 val aliveMs = random.nextLong(config.minAliveMs, config.maxAliveMs)
                 val stopTime = System.currentTimeMillis() + aliveMs
+
                 IPCClient<CallType>(config.ipc, metric).use { client ->
+                    LOG.info("Create new client, alive for {}ms.", aliveMs)
                     clients.mark()
                     while (true) {
                         val startMs = System.currentTimeMillis()
-                        if (startMs < stopTime) {
+                        if (startMs > stopTime) {
                             break
                         }
                         val buf = Utils.createByteBuf(random.nextInt(config.minRequestBodySize, config.maxRequestBodySize))
@@ -60,4 +63,6 @@ object IPCSmokeClient {
             }
         }
     }
+
+    private val LOG = LoggerFactory.getLogger(IPCSmokeClient::class.java)
 }

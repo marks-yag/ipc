@@ -6,13 +6,13 @@ import com.github.yag.ipc.client.IPCClientConfig
 class IPCSmokeClientConfig {
 
     @Value
-    var clients = 8
+    var clients = 64
 
     @Value
     var minAliveMs = 0L
 
     @Value
-    var maxAliveMs = 3600 * 24 * 1000L
+    var maxAliveMs = 3600 * 1000L
 
     @Value
     var minRequestBodySize = 0
