@@ -6,7 +6,14 @@ import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.isSuccessful
+import com.github.yag.retry.DefaultErrorHandler
+import com.github.yag.retry.ExponentialBackOffPolicy
+import com.github.yag.retry.Retry
+import com.github.yag.retry.RetryPolicy
+import com.sun.net.httpserver.Authenticator
 import org.slf4j.LoggerFactory
+import java.net.ConnectException
+import java.time.Duration
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -31,6 +38,11 @@ object IPCSmokeClient {
         val clientSemaphore = Semaphore(config.clients)
 
         val random = Random(System.currentTimeMillis())
+        val retry = Retry(object : RetryPolicy {
+            override fun allowRetry(retryCount: Int, duration: Duration, error: Throwable): Boolean {
+                return true
+            }
+        }, ExponentialBackOffPolicy(), DefaultErrorHandler())
 
         while (true) {
             clientSemaphore.acquire()
@@ -38,28 +50,40 @@ object IPCSmokeClient {
                 val aliveMs = random.nextLong(config.minAliveMs, config.maxAliveMs)
                 val stopTime = System.currentTimeMillis() + aliveMs
 
-                IPCClient<CallType>(config.ipc, metric).use { client ->
-                    LOG.info("Create new client, alive for {}ms.", aliveMs)
-                    clients.mark()
-                    while (true) {
-                        val startMs = System.currentTimeMillis()
-                        if (startMs > stopTime) {
-                            break
-                        }
-                        val buf = Utils.createByteBuf(random.nextInt(config.minRequestBodySize, config.maxRequestBodySize))
-                        client.send(CallType.values().random(), buf) {
-                            val endMs = System.currentTimeMillis()
-                            callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
-
-                            if (!it.header.thrift.statusCode.isSuccessful()) {
-                                errorMetric.mark()
-                            }
-                            buf.release()
-                        }
-
+                try {
+                    val client = retry.call {
+                        IPCClient<CallType>(config.ipc, metric)
                     }
+                    client.use { client ->
+                        LOG.info("Create new client, alive for {}ms.", aliveMs)
+                        clients.mark()
+                        while (true) {
+                            val startMs = System.currentTimeMillis()
+                            if (startMs > stopTime) {
+                                break
+                            }
+                            val buf = Utils.createByteBuf(
+                                random.nextInt(
+                                    config.minRequestBodySize,
+                                    config.maxRequestBodySize
+                                )
+                            )
+
+                            client.send(CallType.values().random(), buf) {
+                                val endMs = System.currentTimeMillis()
+                                callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
+
+                                if (!it.header.thrift.statusCode.isSuccessful()) {
+                                    errorMetric.mark()
+                                }
+                                buf.release()
+                            }
+
+                        }
+                    }
+                } finally {
+                    clientSemaphore.release()
                 }
-                clientSemaphore.release()
             }
         }
     }

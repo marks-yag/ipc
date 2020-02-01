@@ -27,19 +27,28 @@ object IPCSmokeServer {
 
         val random = Random(System.currentTimeMillis())
 
-        tserver<CallType>(config.ipc, metric) {
-            request {
-                CallType.values().forEach { callType ->
-                    map(callType) {
-                        val buf = Utils.createByteBuf(random.nextInt(config.minResponseBodySize, config.maxResponseBodySize))
-                        callMetric.mark()
-                        readMetric.mark(it.header.thrift.contentLength.toLong())
-                        writeMetric.mark(buf.readableBytes().toLong())
-                        it.ok(buf)
+        while (true) {
+            val server = tserver<CallType>(config.ipc, metric) {
+                request {
+                    CallType.values().forEach { callType ->
+                        map(callType) {
+                            val buf = Utils.createByteBuf(
+                                random.nextInt(
+                                    config.minResponseBodySize,
+                                    config.maxResponseBodySize
+                                )
+                            )
+                            callMetric.mark()
+                            readMetric.mark(it.header.thrift.contentLength.toLong())
+                            writeMetric.mark(buf.readableBytes().toLong())
+                            it.ok(buf)
+                        }
                     }
-                }
 
+                }
             }
+            Thread.sleep(random.nextLong(config.minAliveMs, config.maxAliveMs))
+            server.close()
         }
     }
 }

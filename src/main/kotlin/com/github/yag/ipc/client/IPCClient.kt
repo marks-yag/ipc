@@ -353,6 +353,7 @@ class IPCClient<T: Any>(
     inner class ResponseHandler : ChannelInboundHandlerAdapter() {
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             super.channelRead(ctx, msg)
+            @Suppress("UNCHECKED_CAST")
             val packet = msg as Packet<ResponseHeader>
 
             val header = packet.header
@@ -400,6 +401,7 @@ class IPCClient<T: Any>(
         override fun userEventTriggered(ctx: ChannelHandlerContext, event: Any) {
             super.userEventTriggered(ctx, event)
             if (event is IdleStateEvent) {
+                @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
                 when (event.state()) {
                     IdleState.READER_IDLE, IdleState.ALL_IDLE -> {
                         LOG.info("Channel heartbeat timeout.")
