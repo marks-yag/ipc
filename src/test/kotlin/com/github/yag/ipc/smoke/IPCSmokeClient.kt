@@ -10,9 +10,7 @@ import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.ExponentialBackOffPolicy
 import com.github.yag.retry.Retry
 import com.github.yag.retry.RetryPolicy
-import com.sun.net.httpserver.Authenticator
 import org.slf4j.LoggerFactory
-import java.net.ConnectException
 import java.time.Duration
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
