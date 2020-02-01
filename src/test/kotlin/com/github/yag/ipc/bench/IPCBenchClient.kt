@@ -6,8 +6,6 @@ import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.isSuccessful
-import io.netty.buffer.ByteBuf
-import io.netty.buffer.ByteBufAllocator
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -20,9 +18,7 @@ object IPCBenchClient {
     fun main(args: Array<String>) {
         val config = Utils.getConfig(IPCBenchClientConfig::class.java, configFile, args) ?: return
 
-        val buf = ByteBufAllocator.DEFAULT.directBuffer(config.requestBodySize, config.requestBodySize).also {
-            it.writerIndex(config.requestBodySize)
-        }
+        val buf = Utils.createRequestData(config.requestBodySize)
 
         val metric = MetricRegistry()
         val callMetric = metric.timer("call")
@@ -32,7 +28,7 @@ object IPCBenchClient {
         reporter.start(1, TimeUnit.SECONDS)
 
         val latch = CountDownLatch(config.clients * config.requests)
-        repeat(config.clients) { loop ->
+        repeat(config.clients) {
             thread {
                 IPCClient<CallType>(config.ipc, metric).use { client ->
                     repeat(config.requests) {

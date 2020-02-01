@@ -2,6 +2,8 @@ package com.github.yag.ipc
 
 import com.github.yag.config.ConfigLoader
 import com.github.yag.config.config
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufAllocator
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
@@ -33,5 +35,11 @@ object Utils {
                 ConfigLoader.override(it, cmd.getOptionProperties("D"))
             }
         }.config(clazz)
+    }
+
+    fun createRequestData(size: Int) : ByteBuf {
+        return ByteBufAllocator.DEFAULT.directBuffer(size, size).also {
+            it.writerIndex(size)
+        }
     }
 }

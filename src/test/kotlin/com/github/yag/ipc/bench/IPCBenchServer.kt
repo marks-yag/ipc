@@ -6,7 +6,6 @@ import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.ok
 import com.github.yag.ipc.server.tserver
-import io.netty.buffer.ByteBufAllocator
 import java.util.concurrent.TimeUnit
 
 object IPCBenchServer {
@@ -17,17 +16,17 @@ object IPCBenchServer {
     fun main(args: Array<String>) {
         val config = Utils.getConfig(IPCBenchServerConfig::class.java, configFile, args) ?: return
 
-        val buf = ByteBufAllocator.DEFAULT.directBuffer(config.responseBodySize, config.responseBodySize).also {
-            it.writerIndex(config.responseBodySize)
-        }
+        val buf = Utils.createRequestData(config.responseBodySize)
 
         val metric = MetricRegistry()
         val callMetric = metric.meter("call")
-        val readMetric = metric.meter("read")
-        val writeMetric = metric.meter("write")
+        val readMetric = metric.meter("readBytes")
+        val writeMetric = metric.meter("writeBytes")
         val reporter = ConsoleReporter.forRegistry(metric).convertRatesTo(TimeUnit.SECONDS)
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
+
+
 
         tserver<CallType>(config.ipc, metric) {
             request {
@@ -35,11 +34,10 @@ object IPCBenchServer {
                     map(callType) {
                         callMetric.mark()
                         readMetric.mark(it.header.thrift.contentLength.toLong())
-                        writeMetric.mark(buf.readableBytes().toLong())
+                        writeMetric.mark(config.responseBodySize.toLong())
                         it.ok(buf.retain())
                     }
                 }
-
             }
         }
     }
