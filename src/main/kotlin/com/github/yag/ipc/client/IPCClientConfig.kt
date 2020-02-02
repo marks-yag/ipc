@@ -41,6 +41,6 @@ class IPCClientConfig {
     var headers = TreeMap<String, String>()
 
     @Value
-    var reconnectDelayMs = -1L
+    var reconnectDelayMs = 0L
 
 }

@@ -11,7 +11,7 @@ import org.apache.commons.cli.Options
 
 object Utils {
 
-    fun <T: Any> getConfig(clazz: Class<T>, configFile: String, args: Array<String>) : T? {
+    fun <T : Any> getConfig(clazz: Class<T>, configFile: String, args: Array<String>): T? {
         val options = Options().also {
             it.addOption("h", "help", false, "Show this help message.")
             it.addOption(Option.builder("f").argName("config-file").desc("Configuration file path in classpath or absolute").build())
@@ -37,7 +37,7 @@ object Utils {
         }.config(clazz)
     }
 
-    fun createByteBuf(size: Int) : ByteBuf {
+    fun createByteBuf(size: Int): ByteBuf {
         return ByteBufAllocator.DEFAULT.directBuffer(size, size).also {
             it.writerIndex(size)
         }

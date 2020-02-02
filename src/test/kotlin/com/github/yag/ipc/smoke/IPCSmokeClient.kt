@@ -50,7 +50,7 @@ object IPCSmokeClient {
 
                 try {
                     val client = retry.call {
-                        IPCClient<CallType>(config.ipc, metric)
+                        IPCClient<CallType>(config.ipc, metric, "ipc-client")
                     }
                     client.use { client ->
                         LOG.info("Create new client, alive for {}ms.", aliveMs)

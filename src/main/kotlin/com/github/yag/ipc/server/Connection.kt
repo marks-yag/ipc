@@ -14,8 +14,6 @@ class Connection(val id: String) {
 
     lateinit var connectRequest: ConnectRequest
 
-    var account: String = "default"
-
     private val data by lazy {
         ConcurrentHashMap<String, Any>()
     }

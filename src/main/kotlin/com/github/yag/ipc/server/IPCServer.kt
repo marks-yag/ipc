@@ -48,7 +48,7 @@ class IPCServer internal constructor(
     private val config: IPCServerConfig,
     private val requestHandler: RequestHandler,
     private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
-    private val metric: MetricRegistry,
+    metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
 
@@ -230,7 +230,11 @@ class IPCServer internal constructor(
                 }
                 is IOException -> {
                     when (cause.message) {
-                        "Broken pipe", "Connection reset by peer" -> LOG.debug("Connection broken, connection: {}, cause: {}.", connection.id, cause.toString())
+                        "Broken pipe", "Connection reset by peer" -> LOG.debug(
+                            "Connection broken, connection: {}, cause: {}.",
+                            connection.id,
+                            cause.toString()
+                        )
                         else -> LOG.debug("Connection I/O error, connection: {}.", connection.id, cause)
                     }
 

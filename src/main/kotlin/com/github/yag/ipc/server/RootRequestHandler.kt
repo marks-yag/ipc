@@ -8,7 +8,7 @@ import com.github.yag.ipc.StatusCode
 import io.netty.buffer.Unpooled
 import java.util.concurrent.ConcurrentHashMap
 
-class RootRequestHandler<T: Any> : RequestHandler, AutoCloseable {
+class RootRequestHandler<T : Any> : RequestHandler, AutoCloseable {
 
     private val handlers = ConcurrentHashMap<String, RequestHandler>()
 

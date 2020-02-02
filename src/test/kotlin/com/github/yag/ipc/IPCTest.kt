@@ -67,9 +67,7 @@ class IPCTest {
                 endpoint = server.endpoint
                 headers["token"] = "foo"
             }.use { client ->
-                client.sendSync("foo", requestData).let {
-                    assertEquals(StatusCode.NOT_FOUND, it.status())
-                }
+                assertEquals(StatusCode.NOT_FOUND, client.sendSync("foo", requestData).status())
             }
         }
     }
@@ -257,6 +255,7 @@ class IPCTest {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 500
                 heartbeatTimeoutMs = 2000
+                reconnectDelayMs = 5000
             }.use { client ->
                 eventually(3000) {
                     assertFalse(client.isConnected())
@@ -281,6 +280,7 @@ class IPCTest {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 2000
                 heartbeatTimeoutMs = 10000
+                reconnectDelayMs = 5000
             }.use { client ->
                 eventually(3000) {
                     assertFalse(client.isConnected())

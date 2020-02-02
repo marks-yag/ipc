@@ -30,7 +30,7 @@ object IPCBenchClient {
         val latch = CountDownLatch(config.clients * config.requests)
         repeat(config.clients) {
             thread {
-                IPCClient<CallType>(config.ipc, metric).use { client ->
+                IPCClient<CallType>(config.ipc, metric, id = "ipc-client").use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
                         client.send(CallType.values().random(), buf) {

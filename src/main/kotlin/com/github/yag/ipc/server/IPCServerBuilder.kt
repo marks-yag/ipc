@@ -3,7 +3,11 @@ package com.github.yag.ipc.server
 import com.codahale.metrics.MetricRegistry
 import java.util.UUID
 
-class IPCServerBuilder<T: Any>(var ipcServerConfig: IPCServerConfig, val metric: MetricRegistry, val id: String) {
+class IPCServerBuilder<T : Any>(
+    private var ipcServerConfig: IPCServerConfig,
+    private val metric: MetricRegistry,
+    val id: String
+) {
 
     private val rootHandler = RootRequestHandler<T>()
 
@@ -27,12 +31,14 @@ class IPCServerBuilder<T: Any>(var ipcServerConfig: IPCServerConfig, val metric:
 }
 
 
-fun server(config: IPCServerConfig = IPCServerConfig(),
-            metric: MetricRegistry = MetricRegistry(),
-            id: String = UUID.randomUUID().toString(),
-            init: IPCServerBuilder<String>.() -> Unit) = tserver(config, metric, id, init)
+fun server(
+    config: IPCServerConfig = IPCServerConfig(),
+    metric: MetricRegistry = MetricRegistry(),
+    id: String = UUID.randomUUID().toString(),
+    init: IPCServerBuilder<String>.() -> Unit
+) = tserver(config, metric, id, init)
 
-fun <T: Any>tserver(
+fun <T : Any> tserver(
     config: IPCServerConfig = IPCServerConfig(),
     metric: MetricRegistry = MetricRegistry(),
     id: String = UUID.randomUUID().toString(),
