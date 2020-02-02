@@ -2,6 +2,8 @@ package com.github.yag.ipc.client
 
 import com.github.yag.config.Value
 import com.github.yag.ipc.ChannelConfig
+import com.github.yag.retry.CountDownRetryPolicy
+import com.github.yag.retry.ExponentialBackOffPolicy
 import java.net.InetSocketAddress
 import java.util.TreeMap
 
@@ -41,6 +43,9 @@ class IPCClientConfig {
     var headers = TreeMap<String, String>()
 
     @Value
-    var reconnectDelayMs = 0L
+    var connectRetry = CountDownRetryPolicy()
+
+    @Value
+    var connectBackOff = ExponentialBackOffPolicy()
 
 }

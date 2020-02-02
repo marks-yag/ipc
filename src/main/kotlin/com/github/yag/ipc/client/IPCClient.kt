@@ -5,6 +5,8 @@ import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.daemon
+import com.github.yag.retry.DefaultErrorHandler
+import com.github.yag.retry.Retry
 import com.google.common.util.concurrent.SettableFuture
 import io.netty.buffer.ByteBuf
 import org.slf4j.Logger
@@ -20,6 +22,8 @@ class IPCClient<T : Any>(
     private val id: String
 ) : AutoCloseable {
 
+    private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler())
+
     private var client: RawIPCClient<T>
 
     inner class Monitor(private val shouldStop: AtomicBoolean) : Runnable {
@@ -27,11 +31,13 @@ class IPCClient<T : Any>(
             while (!shouldStop.get()) {
                 try {
                     client.channel.closeFuture().await()
-                    LOG.warn("Connection broken, will retry after: {}ms.", config.reconnectDelayMs)
+                    LOG.warn("Connection broken.")
                     client.close()
 
-                    Thread.sleep(config.reconnectDelayMs)
-                    client = RawIPCClient(config, metric, id)
+                    Thread.sleep(config.connectBackOff.baseIntervalMs)
+                    client = retry.call {
+                        RawIPCClient(config, metric, id)
+                    }
                 } catch (e: InterruptedException) {
                 }
             }
@@ -42,7 +48,9 @@ class IPCClient<T : Any>(
     private var monitor: Daemon<Monitor>
 
     init {
-        client = RawIPCClient(config, metric, id)
+        client = retry.call {
+            RawIPCClient(config, metric, id)
+        }
         monitor = daemon("connection-monitor") {
             Monitor(it)
         }.also { it.start() }

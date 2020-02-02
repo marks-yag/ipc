@@ -58,6 +58,7 @@ class IPCTest {
             try {
                 client {
                     endpoint = server.endpoint
+                    connectRetry.maxRetries = 0
                 }
                 fail()
             } catch (e: ConnectionRejectException) {
@@ -230,6 +231,7 @@ class IPCTest {
         client {
             endpoint = server.endpoint
             heartbeatTimeoutMs = Long.MAX_VALUE
+            connectRetry.maxRetries = 0
         }.use { client ->
             assertTrue(client.isConnected())
 
@@ -255,7 +257,7 @@ class IPCTest {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 500
                 heartbeatTimeoutMs = 2000
-                reconnectDelayMs = 5000
+                connectRetry.maxRetries = 0
             }.use { client ->
                 eventually(3000) {
                     assertFalse(client.isConnected())
@@ -280,7 +282,7 @@ class IPCTest {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 2000
                 heartbeatTimeoutMs = 10000
-                reconnectDelayMs = 5000
+                connectRetry.maxRetries = 0
             }.use { client ->
                 eventually(3000) {
                     assertFalse(client.isConnected())
@@ -335,7 +337,6 @@ class IPCTest {
 
                 requestTimeoutMs = 2000
 
-                reconnectDelayMs = 3000
             }.use { client ->
                 eventually(2000) {
                     assertFalse(client.isConnected())

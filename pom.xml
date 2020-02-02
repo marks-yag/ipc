@@ -92,6 +92,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.github.marks-yag</groupId>
+            <artifactId>retry</artifactId>
+            <version>0.0.2</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>28.1-jre</version>
@@ -163,13 +169,6 @@
             <groupId>com.github.marks-yag</groupId>
             <artifactId>punner-core</artifactId>
             <version>${punner.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.marks-yag</groupId>
-            <artifactId>retry</artifactId>
-            <version>0.0.2</version>
             <scope>test</scope>
         </dependency>
 
