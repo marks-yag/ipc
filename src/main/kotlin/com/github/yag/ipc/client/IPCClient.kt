@@ -27,7 +27,7 @@ class IPCClient<T : Any>(
             while (!shouldStop.get()) {
                 try {
                     client.channel.closeFuture().await()
-                    LOG.warn("Connection broken.")
+                    LOG.warn("Connection broken, will retry after: {}ms.", config.reconnectDelayMs)
                     client.close()
 
                     Thread.sleep(config.reconnectDelayMs)
@@ -43,7 +43,7 @@ class IPCClient<T : Any>(
 
     init {
         client = RawIPCClient(config, metric, id)
-        monitor = daemon {
+        monitor = daemon("connection-monitor") {
             Monitor(it)
         }.also { it.start() }
     }
