@@ -26,7 +26,7 @@ import io.netty.channel.ChannelOutboundHandlerAdapter
 import io.netty.channel.ChannelPromise
 import org.slf4j.LoggerFactory
 
-class PacketEncoder : ChannelOutboundHandlerAdapter() {
+internal class PacketEncoder : ChannelOutboundHandlerAdapter() {
 
     override fun write(ctx: ChannelHandlerContext, msg: Any, promise: ChannelPromise) {
         LOG.trace("Write packet: {}", msg)

@@ -26,7 +26,7 @@ import io.netty.bootstrap.Bootstrap
 import io.netty.channel.ChannelOption
 import io.netty.channel.WriteBufferWaterMark
 
-fun <T : AbstractBootstrap<*, *>> T.applyChannelConfig(config: ChannelConfig): T {
+internal fun <T : AbstractBootstrap<*, *>> T.applyChannelConfig(config: ChannelConfig): T {
     option(ChannelOption.CONNECT_TIMEOUT_MILLIS, minOf(config.connectionTimeoutMs, Int.MAX_VALUE.toLong()).toInt())
     if (this is Bootstrap) {
         option(ChannelOption.TCP_NODELAY, config.tcpNoDelay)
@@ -41,7 +41,7 @@ fun StatusCode.isSuccessful(): Boolean {
     return value >= 0
 }
 
-fun <T> addThreadName(postfix: String, body: () -> T): T {
+internal fun <T> addThreadName(postfix: String, body: () -> T): T {
     val thread = Thread.currentThread()
     val oldName = thread.name
     if (!oldName.endsWith("-$postfix")) {

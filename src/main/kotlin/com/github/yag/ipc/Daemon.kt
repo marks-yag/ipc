@@ -23,7 +23,7 @@ package com.github.yag.ipc
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-class Daemon<T : Runnable>(
+internal class Daemon<T : Runnable>(
     private val runnable: (AtomicBoolean) -> T,
     name: String = runnable.javaClass.simpleName,
     private val interruptable: Boolean = true
@@ -49,7 +49,7 @@ class Daemon<T : Runnable>(
     }
 }
 
-fun <T : Runnable> daemon(name: String? = null, init: (AtomicBoolean) -> T): Daemon<T> {
+internal fun <T : Runnable> daemon(name: String? = null, init: (AtomicBoolean) -> T): Daemon<T> {
     return if (name == null) {
         Daemon({ init(it) })
     } else {

@@ -26,7 +26,7 @@ import org.apache.thrift.transport.TTransport
 import org.apache.thrift.transport.TTransportException
 
 
-class TByteBufTransport(private val bf: ByteBuf) : TTransport() {
+internal class TByteBufTransport(private val bf: ByteBuf) : TTransport() {
 
     override fun close() {}
 

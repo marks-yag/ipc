@@ -21,4 +21,4 @@
 
 package com.github.yag.ipc
 
-class ConnectionRejectException(message: String) : Exception(message)
+internal class ConnectionRejectException(message: String) : Exception(message)

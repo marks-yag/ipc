@@ -27,7 +27,7 @@ import io.netty.handler.codec.MessageToByteEncoder
 import org.apache.thrift.TSerializable
 import org.apache.thrift.protocol.TBinaryProtocol
 
-class TEncoder<T : TSerializable>(clazz: Class<T>) : MessageToByteEncoder<T>(clazz) {
+internal class TEncoder<T : TSerializable>(clazz: Class<T>) : MessageToByteEncoder<T>(clazz) {
 
     override fun encode(ctx: ChannelHandlerContext, msg: T, out: ByteBuf) {
         encode(msg, out)

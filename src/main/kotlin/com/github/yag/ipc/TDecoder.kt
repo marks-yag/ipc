@@ -27,7 +27,7 @@ import io.netty.handler.codec.MessageToMessageDecoder
 import org.apache.thrift.TSerializable
 import org.apache.thrift.protocol.TBinaryProtocol
 
-class TDecoder(private val newObject: () -> TSerializable) : MessageToMessageDecoder<ByteBuf>() {
+internal class TDecoder(private val newObject: () -> TSerializable) : MessageToMessageDecoder<ByteBuf>() {
 
     override fun decode(ctx: ChannelHandlerContext, msg: ByteBuf, out: MutableList<Any>) {
         out.add(decode(newObject(), msg))
