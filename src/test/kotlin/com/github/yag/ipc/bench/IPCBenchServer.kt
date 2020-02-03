@@ -26,7 +26,7 @@ import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.ok
-import com.github.yag.ipc.server.tserver
+import com.github.yag.ipc.server.server
 import java.util.concurrent.TimeUnit
 
 object IPCBenchServer {
@@ -49,7 +49,7 @@ object IPCBenchServer {
 
 
 
-        tserver<CallType>(config.ipc, metric) {
+        server<CallType>(config.ipc, metric) {
             request {
                 CallType.values().forEach { callType ->
                     map(callType) {

@@ -26,7 +26,7 @@ import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.ok
-import com.github.yag.ipc.server.tserver
+import com.github.yag.ipc.server.server
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -49,7 +49,7 @@ object IPCSmokeServer {
         val random = Random(System.currentTimeMillis())
 
         while (true) {
-            val server = tserver<CallType>(config.ipc, metric) {
+            val server = server<CallType>(config.ipc, metric) {
                 request {
                     CallType.values().forEach { callType ->
                         map(callType) {

@@ -35,8 +35,15 @@ import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * The IPC Client class send messages to IPC server can execute callback when response was received.
+ *
+ * @param T The call type class, typically string, numbers and enums.
+ * @property config client config
+ * @property metric metric registry
+ * @property id client id, will be used in log and thread name.
+ */
 class IPCClient<T : Any>(
     private val config: IPCClientConfig,
     private val metric: MetricRegistry,
@@ -77,13 +84,25 @@ class IPCClient<T : Any>(
         }.also { it.start() }
     }
 
-    fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
-        client.send(type, buf, callback)
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request body
+     * @param callback code block to handle response packet
+     */
+    fun send(type: T, data: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
+        client.send(type, data, callback)
     }
 
-    fun send(type: T, buf: ByteBuf): Future<Packet<ResponseHeader>> {
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request body
+     * @return Future object of response packet
+     */
+    fun send(type: T, data: ByteBuf): Future<Packet<ResponseHeader>> {
         val future = SettableFuture.create<Packet<ResponseHeader>>()
-        send(type, buf) {
+        send(type, data) {
             future.set(it.also {
                 it.body.retain()
             })
@@ -91,35 +110,48 @@ class IPCClient<T : Any>(
         return future
     }
 
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request body
+     * @return response packet
+     */
     fun sendSync(type: T, data: ByteBuf): Packet<ResponseHeader> {
         return send(type, data).get()
     }
 
+    /**
+     * Close IPC client and release all related resources..
+     */
     override fun close() {
         monitor.close()
         client.close()
     }
 
+    /**
+     * Check connection is well.
+     * @return true is connected.
+     */
     fun isConnected(): Boolean {
         return client.isConnected()
     }
 
     companion object {
         private val LOG: Logger = LoggerFactory.getLogger(IPCClient::class.java)
-
-        private val counter = AtomicLong(0)
     }
 
 }
 
-fun client(
-    config: IPCClientConfig = IPCClientConfig(),
-    metric: MetricRegistry = MetricRegistry(),
-    id: String = UUID.randomUUID().toString(),
-    init: IPCClientConfig.() -> Unit
-) = tclient<String>(config, metric, id, init)
-
-fun <T : Any> tclient(
+/**
+ * Create IPC client.
+ * @param T call type
+ * @param config client config
+ * @param metric metric registry
+ * @param id client id
+ * @param init init block of client config
+ * @return created IPC client.
+ */
+fun <T : Any> client(
     config: IPCClientConfig = IPCClientConfig(),
     metric: MetricRegistry = MetricRegistry(),
     id: String = UUID.randomUUID().toString(),

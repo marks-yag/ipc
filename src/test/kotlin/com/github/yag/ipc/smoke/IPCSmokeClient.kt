@@ -70,10 +70,9 @@ object IPCSmokeClient {
                 val stopTime = System.currentTimeMillis() + aliveMs
 
                 try {
-                    val client = retry.call {
+                    retry.call {
                         IPCClient<CallType>(config.ipc, metric, "ipc-client")
-                    }
-                    client.use { client ->
+                    }.use { client ->
                         LOG.info("Create new client, alive for {}ms.", aliveMs)
                         clients.mark()
                         while (true) {

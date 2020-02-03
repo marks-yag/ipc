@@ -62,7 +62,7 @@ class IPCTest {
 
     @Test
     fun testConnectionHandler() {
-        server {
+        server<String> {
             connection {
                 add {
                     if (it.remoteAddress.hostString != "127.0.0.1") {
@@ -77,7 +77,7 @@ class IPCTest {
             }
         }.use { server ->
             try {
-                client {
+                client<String> {
                     endpoint = server.endpoint
                     connectRetry.maxRetries = 0
                 }
@@ -85,7 +85,7 @@ class IPCTest {
             } catch (e: ConnectionRejectException) {
             }
 
-            client {
+            client<String> {
                 endpoint = server.endpoint
                 headers["token"] = "foo"
             }.use { client ->
@@ -96,14 +96,14 @@ class IPCTest {
 
     @Test
     fun testPingPong() {
-        server {
+        server<String> {
             request {
                 map("foo") { request ->
                     request.ok(responseData.retain())
                 }
             }
         }.use { server ->
-            client {
+            client<String> {
                 endpoint = server.endpoint
             }.use { client ->
                 doTest(client)
@@ -124,14 +124,14 @@ class IPCTest {
 
     @Test
     fun testResponseContent() {
-        server {
+        server<String> {
             request {
                 map("any") { request ->
                     request.ok(responseData.retain())
                 }
             }
         }.use { server ->
-            client {
+            client<String> {
                 endpoint = server.endpoint
             }.use { client ->
                 assertEquals(1, requestData.refCnt())
@@ -148,7 +148,7 @@ class IPCTest {
 
     @Test
     fun testPartialContent() {
-        server {
+        server<String> {
             request {
                 set("foo") { _, request, echo ->
                     repeat(10) {
@@ -158,7 +158,7 @@ class IPCTest {
                 }
             }
         }.use { server ->
-            client {
+            client<String> {
                 endpoint = server.endpoint
             }.use { client ->
                 val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
@@ -183,7 +183,7 @@ class IPCTest {
 
     @Test
     fun testDefaultExceptionMapping() {
-        server {
+        server<String> {
             request {
                 map("foo") {
                     throw IllegalArgumentException()
@@ -193,7 +193,7 @@ class IPCTest {
                 }
             }
         }.use { server ->
-            client {
+            client<String> {
                 endpoint = server.endpoint
             }.use { client ->
                 assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("foo", requestData).status())
@@ -208,7 +208,7 @@ class IPCTest {
     @Test
     fun testSequence() {
         val queue = LinkedBlockingQueue<Long>()
-        server {
+        server<String> {
             request {
                 map("foo") {
                     queue.put(it.header.thrift.callId)
@@ -216,7 +216,7 @@ class IPCTest {
                 }
             }
         }.use { server ->
-            client {
+            client<String> {
                 endpoint = server.endpoint
             }.use { client ->
                 val latch = CountDownLatch(10000)
@@ -242,14 +242,14 @@ class IPCTest {
      */
     @Test
     fun testServerClose() {
-        val server = server {
+        val server = server<String> {
             request {
                 set("ignore") { _, _, _ ->
                     //:~
                 }
             }
         }
-        client {
+        client<String> {
             endpoint = server.endpoint
             heartbeatTimeoutMs = Long.MAX_VALUE
             connectRetry.maxRetries = 0
@@ -271,10 +271,10 @@ class IPCTest {
      */
     @Test
     fun testClientSideHeartbeatTimeout() {
-        server {
+        server<String> {
         }.use { server ->
             server.ignoreHeartbeat = true
-            client {
+            client<String> {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 500
                 heartbeatTimeoutMs = 2000
@@ -294,12 +294,12 @@ class IPCTest {
      */
     @Test
     fun testServerSideHeartbeatTimeout() {
-        server {
+        server<String> {
             config {
                 maxIdleTimeMs = 1000
             }
         }.use { server ->
-            client {
+            client<String> {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 2000
                 heartbeatTimeoutMs = 10000
@@ -317,12 +317,12 @@ class IPCTest {
      */
     @Test
     fun testClientSideHeartbeat() {
-        server {
+        server<String> {
             config {
                 maxIdleTimeMs = 2000
             }
         }.use { server ->
-            client {
+            client<String> {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 500
                 heartbeatTimeoutMs = 1000
@@ -343,7 +343,7 @@ class IPCTest {
      */
     @Test
     fun testClientReconnect() {
-        server {
+        server<String> {
         }.use { server ->
             server.ignoreHeartbeat = true
             thread {
@@ -351,7 +351,7 @@ class IPCTest {
                 server.ignoreHeartbeat = false
             }
 
-            client {
+            client<String> {
                 endpoint = server.endpoint
                 heartbeatIntervalMs = 500
                 heartbeatTimeoutMs = 1000

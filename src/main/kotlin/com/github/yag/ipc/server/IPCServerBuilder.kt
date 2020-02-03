@@ -51,15 +51,7 @@ class IPCServerBuilder<T : Any>(
     }
 }
 
-
-fun server(
-    config: IPCServerConfig = IPCServerConfig(),
-    metric: MetricRegistry = MetricRegistry(),
-    id: String = UUID.randomUUID().toString(),
-    init: IPCServerBuilder<String>.() -> Unit
-) = tserver(config, metric, id, init)
-
-fun <T : Any> tserver(
+fun <T : Any> server(
     config: IPCServerConfig = IPCServerConfig(),
     metric: MetricRegistry = MetricRegistry(),
     id: String = UUID.randomUUID().toString(),
