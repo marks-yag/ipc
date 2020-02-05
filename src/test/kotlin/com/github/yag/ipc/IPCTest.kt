@@ -88,7 +88,7 @@ class IPCTest {
             }.use { client ->
                 client.sendSync("foo", requestData).let {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
-                    assertFailsWith(NoSuchCallTypeException::class) {
+                    assertFailsWith(UnsupportedOperationException::class) {
                         it.body()
                     }
                 }
@@ -120,7 +120,7 @@ class IPCTest {
         }
         client.sendSync("not-exist", requestData).let {
             assertEquals(StatusCode.NOT_FOUND, it.status())
-            assertFailsWith(NoSuchCallTypeException::class) {
+            assertFailsWith(UnsupportedOperationException::class) {
                 it.body()
             }
         }
@@ -203,13 +203,13 @@ class IPCTest {
             }.use { client ->
                 client.sendSync("foo", requestData).let {
                     assertEquals(StatusCode.INTERNAL_ERROR, it.status())
-                    assertFailsWith(ServerSideException::class) {
+                    assertFailsWith(RemoteException::class) {
                         it.body()
                     }
                 }
                 client.sendSync("foo", requestData).let {
                     assertEquals(StatusCode.INTERNAL_ERROR, it.status())
-                    assertFailsWith(ServerSideException::class) {
+                    assertFailsWith(RemoteException::class) {
                         it.body()
                     }
                 }

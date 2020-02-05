@@ -17,8 +17,4 @@
 
 package com.github.yag.ipc
 
-sealed class RemoteException(message: String) : Exception(message)
-
-class NoSuchCallTypeException(message: String) : RemoteException(message)
-
-class ServerSideException(message: String) : RemoteException(message)
+class RemoteException(message: String) : Exception(message)
