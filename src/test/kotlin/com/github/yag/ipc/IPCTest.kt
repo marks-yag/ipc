@@ -31,6 +31,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -85,7 +86,12 @@ class IPCTest {
                 endpoint = server.endpoint
                 headers["token"] = "foo"
             }.use { client ->
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync("foo", requestData).status())
+                client.sendSync("foo", requestData).let {
+                    assertEquals(StatusCode.NOT_FOUND, it.status())
+                    assertFailsWith(NoSuchCallTypeException::class) {
+                        it.body()
+                    }
+                }
             }
         }
     }
@@ -110,11 +116,13 @@ class IPCTest {
     private fun doTest(client: IPCClient<String>) {
         client.sendSync("foo", requestData).let {
             assertEquals(StatusCode.OK, it.status())
-            it.body.release()
+            it.body().release()
         }
         client.sendSync("not-exist", requestData).let {
             assertEquals(StatusCode.NOT_FOUND, it.status())
-            it.body.release()
+            assertFailsWith(NoSuchCallTypeException::class) {
+                it.body()
+            }
         }
     }
 
@@ -133,9 +141,10 @@ class IPCTest {
                 assertEquals(1, requestData.refCnt())
                 client.sendSync("any", requestData).let {
                     assertEquals(StatusCode.OK, it.status())
-                    assertEquals(1, it.body.refCnt())
-                    assertEquals(responseData, it.body)
-                    it.body.release()
+                    val body = it.body()
+                    assertEquals(1, body.refCnt())
+                    assertEquals(responseData, body)
+                    body.release()
                 }
                 assertEquals(1, requestData.refCnt())
             }
@@ -192,8 +201,18 @@ class IPCTest {
             client<String> {
                 endpoint = server.endpoint
             }.use { client ->
-                assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("foo", requestData).status())
-                assertEquals(StatusCode.INTERNAL_ERROR, client.sendSync("bar", requestData).status())
+                client.sendSync("foo", requestData).let {
+                    assertEquals(StatusCode.INTERNAL_ERROR, it.status())
+                    assertFailsWith(ServerSideException::class) {
+                        it.body()
+                    }
+                }
+                client.sendSync("foo", requestData).let {
+                    assertEquals(StatusCode.INTERNAL_ERROR, it.status())
+                    assertFailsWith(ServerSideException::class) {
+                        it.body()
+                    }
+                }
             }
         }
     }

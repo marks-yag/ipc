@@ -17,6 +17,10 @@
 
 package com.github.yag.ipc
 
+import io.netty.buffer.ByteBuf
+import java.net.ConnectException
+import java.util.concurrent.TimeoutException
+
 class ResponsePacketHeader(thrift: ResponseHeader = ResponseHeader()) : PacketHeader<ResponseHeader>(thrift, {
     it.contentLength
 }, {
@@ -24,3 +28,17 @@ class ResponsePacketHeader(thrift: ResponseHeader = ResponseHeader()) : PacketHe
 })
 
 fun Packet<ResponseHeader>.status(): StatusCode = header.thrift.statusCode
+
+fun Packet<ResponseHeader>.isSuccessful(): Boolean = status().isSuccessful()
+
+fun Packet<ResponseHeader>.body(): ByteBuf {
+    return when (status()) {
+        StatusCode.OK, StatusCode.PARTIAL_CONTENT -> body.retain()
+        StatusCode.NOT_FOUND -> throw NoSuchCallTypeException(body.toString(Charsets.UTF_8))
+        StatusCode.TIMEOUT -> throw TimeoutException()
+        StatusCode.CONNECTION_ERROR -> throw ConnectException()
+        StatusCode.INTERNAL_ERROR -> throw ServerSideException(body.toString(Charsets.UTF_8))
+    }.also {
+        body.release()
+    }
+}

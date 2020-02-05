@@ -17,24 +17,8 @@
 
 package com.github.yag.ipc
 
-import io.netty.buffer.ByteBuf
-import io.netty.buffer.Unpooled
-import org.apache.thrift.TSerializable
+sealed class RemoteException(message: String) : Exception(message)
 
-class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: ByteBuf) {
+class NoSuchCallTypeException(message: String) : RemoteException(message)
 
-    internal fun isHeartbeat() = header.isHeartbeat(header.thrift)
-
-    companion object {
-
-        internal val requestHeartbeat = Packet(RequestPacketHeader(RequestHeader(-1, "", 0)), Unpooled.EMPTY_BUFFER)
-
-        internal val responseHeartbeat = status(-1, StatusCode.OK)
-
-    }
-
-}
-
-
-
-
+class ServerSideException(message: String) : RemoteException(message)

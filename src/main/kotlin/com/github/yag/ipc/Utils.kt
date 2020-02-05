@@ -19,6 +19,7 @@ package com.github.yag.ipc
 
 import io.netty.bootstrap.AbstractBootstrap
 import io.netty.bootstrap.Bootstrap
+import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelOption
 import io.netty.channel.WriteBufferWaterMark
 
@@ -47,5 +48,13 @@ internal fun <T> addThreadName(postfix: String, body: () -> T): T {
         return body()
     } finally {
         thread.name = oldName
+    }
+}
+
+fun <T> ByteBuf.use(body: (ByteBuf) -> T): T {
+    return try {
+        return body(this)
+    } finally {
+        release()
     }
 }

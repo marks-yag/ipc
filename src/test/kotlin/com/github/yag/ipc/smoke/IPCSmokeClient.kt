@@ -87,7 +87,7 @@ object IPCSmokeClient {
                                 val endMs = System.currentTimeMillis()
                                 callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
-                                if (!it.header.thrift.statusCode.isSuccessful()) {
+                                if (!it.isSuccessful()) {
                                     errorMetric.mark()
                                 }
                                 buf.release()
