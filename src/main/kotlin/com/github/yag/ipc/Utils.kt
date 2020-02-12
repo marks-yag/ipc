@@ -53,7 +53,7 @@ internal fun <T> addThreadName(postfix: String, body: () -> T): T {
 
 fun <T> ByteBuf.use(body: (ByteBuf) -> T): T {
     return try {
-        return body(this)
+        body(this)
     } finally {
         release()
     }
