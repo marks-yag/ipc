@@ -34,10 +34,10 @@ fun Packet<ResponseHeader>.isSuccessful(): Boolean = status().isSuccessful()
 fun Packet<ResponseHeader>.body(): ByteBuf {
     return when (status()) {
         StatusCode.OK, StatusCode.PARTIAL_CONTENT -> body.retain()
-        StatusCode.NOT_FOUND -> throw UnsupportedOperationException(body.toString(Charsets.UTF_8))
+        StatusCode.NOT_FOUND -> throw UnsupportedOperationException()
         StatusCode.TIMEOUT -> throw TimeoutException()
         StatusCode.CONNECTION_ERROR -> throw ConnectException()
-        StatusCode.INTERNAL_ERROR -> throw RemoteException(body.toString(Charsets.UTF_8))
+        StatusCode.INTERNAL_ERROR -> throw RemoteException(body.retain())
     }.also {
         body.release()
     }

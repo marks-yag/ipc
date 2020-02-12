@@ -17,4 +17,6 @@
 
 package com.github.yag.ipc
 
-class RemoteException(message: String) : Exception(message)
+import io.netty.buffer.ByteBuf
+
+class RemoteException(val content: ByteBuf) : Exception("Remote call failed.")
