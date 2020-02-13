@@ -4,11 +4,13 @@ struct ConnectRequest {
 1: string version
 2: optional i64 requestTimeoutMs
 3: optional map<string, string> headers
+4: optional binary body
 }
 
 struct ConnectionAccepted {
 1: required string connectionId
 2: optional map<string, string> headers
+3: optional binary body
 }
 
 struct ConnectionRejected {
