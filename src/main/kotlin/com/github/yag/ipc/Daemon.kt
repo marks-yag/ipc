@@ -29,6 +29,10 @@ internal class Daemon<T : Runnable>(
 
     val runner = runnable(shouldShop)
 
+    init {
+        isDaemon = true
+    }
+
     override fun run() {
         runner.run()
     }
