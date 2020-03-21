@@ -224,6 +224,7 @@ internal class RawIPCClient<T : Any>(
 
                                 list.forEach { packet ->
                                     channel.write(packet).addListener {
+                                        packet.body.release()
                                         sendTime.update(System.currentTimeMillis() - start)
                                         parallelRequestContentSize.release(packet.header.thrift.contentLength)
                                         if (LOG.isTraceEnabled) {
@@ -234,7 +235,6 @@ internal class RawIPCClient<T : Any>(
                                             )
                                         }
                                     }
-                                    packet.body.release()
                                 }
 
                                 channel.flush()
