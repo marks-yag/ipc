@@ -339,6 +339,7 @@ internal class RawIPCClient<T : Any>(
                 } else {
                     LOG.debug("Received heartbeat ack.")
                     lastContact = System.currentTimeMillis()
+                    buf.release()
                 }
             }
         }

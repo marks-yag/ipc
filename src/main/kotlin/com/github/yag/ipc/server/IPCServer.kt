@@ -189,6 +189,7 @@ class IPCServer internal constructor(
                 if (!packet.isHeartbeat()) {
                     out.add(packet)
                 } else {
+                    buf.release()
                     if (!ignoreHeartbeat) {
                         val heartbeat = Packet.responseHeartbeat
                         ctx.writeAndFlush(heartbeat)
