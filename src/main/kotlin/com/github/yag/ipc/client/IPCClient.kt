@@ -46,7 +46,7 @@ class IPCClient<T : Any>(
     private val id: String
 ) : AutoCloseable {
 
-    private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler())
+    private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
 
     private var client: RawIPCClient<T>
 

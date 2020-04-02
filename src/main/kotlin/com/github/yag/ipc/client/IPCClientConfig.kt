@@ -65,4 +65,7 @@ class IPCClientConfig {
     @Value
     var connectBackOff = ExponentialBackOffPolicy()
 
+    @Value
+    var backOffRandomRange = 0.2
+
 }
