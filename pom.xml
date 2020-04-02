@@ -105,13 +105,13 @@
         <dependency>
             <groupId>com.github.marks-yag</groupId>
             <artifactId>config-core</artifactId>
-            <version>0.9.3</version>
+            <version>0.9.4</version>
         </dependency>
 
         <dependency>
             <groupId>com.github.marks-yag</groupId>
             <artifactId>retry</artifactId>
-            <version>0.0.4</version>
+            <version>0.1.0</version>
         </dependency>
 
         <dependency>
