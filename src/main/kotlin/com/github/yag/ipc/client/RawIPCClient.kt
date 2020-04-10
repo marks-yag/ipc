@@ -391,12 +391,12 @@ internal class RawIPCClient<T : Any>(
                 @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
                 when (event.state()) {
                     IdleState.READER_IDLE, IdleState.ALL_IDLE -> {
-                        LOG.info("Channel heartbeat timeout.")
+                        LOG.debug("Channel heartbeat timeout.")
                         ctx.channel().close()
                     }
                     IdleState.WRITER_IDLE -> {
                         if (connected.get()) {
-                            LOG.info("Send heartbeat.")
+                            LOG.debug("Send heartbeat.")
                             ctx.channel().writeAndFlush(
                                 Packet.requestHeartbeat
                             ).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
