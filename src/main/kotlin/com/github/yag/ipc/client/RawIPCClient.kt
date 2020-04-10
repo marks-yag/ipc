@@ -139,7 +139,7 @@ internal class RawIPCClient<T : Any>(
             }
             succ = true
         } catch (e: InterruptedException) {
-            throw SocketTimeoutException("Connect to ipc server timeout and interrupted.")
+            throw InterruptedException("Connect to ipc server timeout and interrupted.")
         } catch (e: ConnectException) {
             throw ConnectException(e.message) //make stack clear
         } catch (e: SocketException) {
