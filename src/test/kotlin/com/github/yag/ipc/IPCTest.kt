@@ -29,7 +29,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
-import kotlin.math.cos
 import kotlin.system.measureTimeMillis
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -411,7 +410,7 @@ class IPCTest {
             assertFailsWith<ConnectException> {
                 client<String> {
                     endpoint = server.endpoint
-                    channelConfig.connectionTimeoutMs = 1000
+                    channel.connectionTimeoutMs = 1000
                     connectRetry.maxRetries = 1
                     connectRetry.maxTimeElapsedMs = 5000
                 }.close()

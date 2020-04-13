@@ -61,7 +61,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.SocketException
-import java.net.SocketTimeoutException
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.LinkedBlockingQueue
@@ -120,7 +119,7 @@ internal class RawIPCClient<T : Any>(
         bootstrap = Bootstrap().apply {
             channel(NioSocketChannel::class.java)
                 .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
-                .applyChannelConfig(config.channelConfig)
+                .applyChannelConfig(config.channel)
                 .handler(ChildChannelHandler())
         }
         closed.set(false)

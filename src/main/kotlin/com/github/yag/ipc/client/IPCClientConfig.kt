@@ -54,7 +54,7 @@ class IPCClientConfig {
     var maxWriteBatchSize: Int = 8192
 
     @Value
-    var channelConfig = ChannelConfig()
+    var channel = ChannelConfig()
 
     @Value
     var headers = TreeMap<String, String>()
