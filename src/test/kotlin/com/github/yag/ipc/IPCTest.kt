@@ -21,12 +21,16 @@ import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
+import com.google.common.util.concurrent.SettableFuture
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
+import java.net.ConnectException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
+import kotlin.math.cos
+import kotlin.system.measureTimeMillis
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -394,6 +398,51 @@ class IPCTest {
                 assertEquals(1, requestData.refCnt())
             }
         }
+    }
+
+    @Test
+    fun testConnectTimeout() {
+        val server = server<String> {
+        }.also {
+            it.close()
+        }
+
+        val cost = measureTimeMillis {
+            assertFailsWith<ConnectException> {
+                client<String> {
+                    endpoint = server.endpoint
+                    channelConfig.connectionTimeoutMs = 1000
+                    connectRetry.maxRetries = 1
+                    connectRetry.maxTimeElapsedMs = 5000
+                }.close()
+            }
+        }
+
+        assertTrue(cost < 10000, "Cost is ${cost}ms.")
+    }
+
+    @Test
+    fun testConnectTimeoutWithInterrupt() {
+        val server = server<String> {
+        }.also {
+            it.close()
+        }
+
+        val client = SettableFuture.create<IPCClient<String>>()
+
+        val thread = thread {
+            assertFailsWith<ConnectException> {
+                client.set(client {
+                    endpoint = server.endpoint
+                })
+            }
+        }
+
+        Thread.sleep(1000)
+        thread.interrupt()
+        thread.join()
+
+        assertFalse(client.isDone)
     }
 
 }
