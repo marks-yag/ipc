@@ -105,7 +105,7 @@
         <dependency>
             <groupId>com.github.marks-yag</groupId>
             <artifactId>config-core</artifactId>
-            <version>0.9.4</version>
+            <version>0.10.1</version>
         </dependency>
 
         <dependency>
