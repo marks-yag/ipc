@@ -80,6 +80,10 @@ internal class RawIPCClient<T : Any>(
 
     private val bootstrap: Bootstrap
 
+    private val prompt: Prompt
+
+    private val promptFuture: SettableFuture<Prompt>
+
     private val connection: ConnectionAccepted
 
     private val connectFuture: SettableFuture<ConnectionAccepted>
@@ -125,11 +129,15 @@ internal class RawIPCClient<T : Any>(
         }
         closed.set(false)
         currentId = 0L
+
+        promptFuture = SettableFuture.create()
         connectFuture = SettableFuture.create()
 
         var succ = false
         try {
             channel = bootstrap.connect(config.endpoint).sync().channel().also {
+                prompt = promptFuture.get()
+
                 val connectionRequest = ConnectRequest("V1")
                 if (config.headers.isNotEmpty()) {
                     connectionRequest.setHeaders(config.headers)
@@ -324,13 +332,12 @@ internal class RawIPCClient<T : Any>(
         @Volatile
         private var connected = false
 
-        private val prompt = Prompt()
-
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
             if (!prompted) {
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
-                prompt.read(protocol)
+                val prompt = Prompt().apply { read(protocol) }
                 prompted = true
+                promptFuture.set(prompt)
             } else if (!connected) {
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
                 val connectionResponse = ConnectionResponse().apply { read(protocol) }
