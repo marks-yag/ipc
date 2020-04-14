@@ -26,6 +26,7 @@ import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PacketCodec
 import com.github.yag.ipc.PacketEncoder
+import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.RequestPacketHeader
 import com.github.yag.ipc.ResponseHeader
@@ -124,7 +125,7 @@ internal class RawIPCClient<T : Any>(
         }
         closed.set(false)
         currentId = 0L
-        connectFuture = SettableFuture.create<ConnectionAccepted>()
+        connectFuture = SettableFuture.create()
 
         var succ = false
         try {
@@ -318,10 +319,17 @@ internal class RawIPCClient<T : Any>(
     inner class ResponseDecoder : ByteToMessageDecoder() {
 
         @Volatile
+        private var prompted = false
+
+        @Volatile
         private var connected = false
 
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
-            if (!connected) {
+            if (!prompted) {
+                val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
+                val prompt = Prompt().apply { read(protocol) }
+                prompted = true
+            } else if (!connected) {
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
                 val connectionResponse = ConnectionResponse().apply { read(protocol) }
                 connected = connectionResponse.isSetAccepted

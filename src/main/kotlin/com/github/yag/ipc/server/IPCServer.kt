@@ -25,6 +25,7 @@ import com.github.yag.ipc.ConnectionResponse
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PacketCodec
 import com.github.yag.ipc.PacketEncoder
+import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.RequestPacketHeader
 import com.github.yag.ipc.TDecoder
@@ -138,6 +139,7 @@ class IPCServer internal constructor(
                 addLast(LengthFieldBasedFrameDecoder(config.maxReqeustPacketSize, 0, 4, 0, 4))
                 addLast(LengthFieldPrepender(4, 0))
 
+                addLast(TEncoder(Prompt::class.java))
                 addLast(TEncoder(ConnectionResponse::class.java))
                 addLast(PacketEncoder())
 
@@ -145,6 +147,8 @@ class IPCServer internal constructor(
 
                 addLast(RequestDispatcher(connection))
             }
+
+            socketChannel.writeAndFlush(Prompt())
         }
 
     }

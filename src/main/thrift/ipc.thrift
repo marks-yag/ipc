@@ -1,5 +1,10 @@
 namespace java com.github.yag.ipc
 
+struct Prompt {
+1: string version
+2: optional binary body
+}
+
 struct ConnectRequest {
 1: string version
 2: optional i64 requestTimeoutMs
