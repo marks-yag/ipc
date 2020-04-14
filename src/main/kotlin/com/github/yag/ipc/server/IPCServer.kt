@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.BindException
 import java.net.InetSocketAddress
+import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -66,6 +67,7 @@ class IPCServer internal constructor(
     private val config: IPCServerConfig,
     private val requestHandler: RequestHandler,
     private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
+    private val promptData: () -> ByteArray,
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
@@ -148,7 +150,7 @@ class IPCServer internal constructor(
                 addLast(RequestDispatcher(connection))
             }
 
-            socketChannel.writeAndFlush(Prompt())
+            socketChannel.writeAndFlush(Prompt("V1", ByteBuffer.wrap(promptData())))
         }
 
     }

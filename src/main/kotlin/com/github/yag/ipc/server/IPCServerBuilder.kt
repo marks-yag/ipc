@@ -18,6 +18,8 @@
 package com.github.yag.ipc.server
 
 import com.codahale.metrics.MetricRegistry
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 import java.util.UUID
 
 class IPCServerBuilder<T : Any>(
@@ -29,6 +31,8 @@ class IPCServerBuilder<T : Any>(
     private val rootHandler = RootRequestHandler<T>()
 
     private val connectionHandler = ChainConnectionHandler()
+
+    private var promptData: () -> ByteArray = { ByteArray(0) }
 
     fun config(init: IPCServerConfig.() -> Unit) {
         ipcServerConfig.init()
@@ -42,8 +46,12 @@ class IPCServerBuilder<T : Any>(
         rootHandler.init()
     }
 
+    fun prompt(data: () -> ByteArray) {
+        promptData = data
+    }
+
     fun build(): IPCServer {
-        return IPCServer(ipcServerConfig, rootHandler, connectionHandler, metric, id)
+        return IPCServer(ipcServerConfig, rootHandler, connectionHandler, promptData, metric, id)
     }
 }
 

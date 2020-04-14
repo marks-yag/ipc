@@ -23,6 +23,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 class Connection(val id: String) {
 
+    lateinit var promptData: ByteArray
+
     lateinit var localAddress: InetSocketAddress
         internal set
 

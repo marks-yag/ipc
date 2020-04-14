@@ -324,10 +324,12 @@ internal class RawIPCClient<T : Any>(
         @Volatile
         private var connected = false
 
+        private val prompt = Prompt()
+
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
             if (!prompted) {
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
-                val prompt = Prompt().apply { read(protocol) }
+                prompt.read(protocol)
                 prompted = true
             } else if (!connected) {
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
