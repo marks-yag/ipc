@@ -34,9 +34,9 @@ class ChannelConfig {
     var sendBufSize: Int = 1024 * 1024
 
     @Value
-    var waterMarkHigh: Int = 1024 * 1024 * 16
+    var watermarkHigh: Int = 1024 * 1024 * 16
 
     @Value
-    var waterMarkLow: Int = 1024 * 1024 * 8
+    var watermarkLow: Int = 1024 * 1024 * 8
 
 }

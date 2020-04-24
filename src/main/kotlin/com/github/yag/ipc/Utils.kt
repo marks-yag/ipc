@@ -30,7 +30,7 @@ internal fun <T : AbstractBootstrap<*, *>> T.applyChannelConfig(config: ChannelC
         option(ChannelOption.SO_SNDBUF, config.sendBufSize)
     }
     option(ChannelOption.SO_RCVBUF, config.recvBufSize)
-    option(ChannelOption.WRITE_BUFFER_WATER_MARK, WriteBufferWaterMark(config.waterMarkLow, config.waterMarkHigh))
+    option(ChannelOption.WRITE_BUFFER_WATER_MARK, WriteBufferWaterMark(config.watermarkLow, config.watermarkHigh))
     return this
 }
 

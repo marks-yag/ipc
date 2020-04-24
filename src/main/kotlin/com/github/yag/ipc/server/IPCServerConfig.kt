@@ -29,7 +29,7 @@ class IPCServerConfig {
     var port: Int = 0
 
     @Value
-    var maxReqeustPacketSize = 1024 * 1024 * 10
+    var maxRequestPacketSize = 1024 * 1024 * 10
 
     @Value
     var maxIdleTimeMs: Long = 30 * 1000

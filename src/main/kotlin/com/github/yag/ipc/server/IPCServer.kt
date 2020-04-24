@@ -34,7 +34,6 @@ import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.ByteBufInputStream
 import io.netty.buffer.ByteBufUtil
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
@@ -50,8 +49,6 @@ import io.netty.handler.timeout.ReadTimeoutException
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.traffic.GlobalTrafficShapingHandler
 import io.netty.util.concurrent.DefaultThreadFactory
-import org.apache.thrift.protocol.TBinaryProtocol
-import org.apache.thrift.transport.TIOStreamTransport
 import org.jetbrains.annotations.TestOnly
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -141,7 +138,7 @@ class IPCServer internal constructor(
                 addLast(ReadTimeoutHandler(config.maxIdleTimeMs, TimeUnit.MILLISECONDS))
                 addLast(trafficHandler)
 
-                addLast(LengthFieldBasedFrameDecoder(config.maxReqeustPacketSize, 0, 4, 0, 4))
+                addLast(LengthFieldBasedFrameDecoder(config.maxRequestPacketSize, 0, 4, 0, 4))
                 addLast(LengthFieldPrepender(4, 0))
 
                 addLast(TEncoder(Prompt::class.java))
