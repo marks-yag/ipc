@@ -22,6 +22,7 @@ import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.IPCClient
+import com.github.yag.ipc.client.client
 import com.github.yag.ipc.isSuccessful
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -47,7 +48,9 @@ object IPCBenchClient {
         val latch = CountDownLatch(config.clients * config.requests)
         repeat(config.clients) {
             thread {
-                IPCClient<CallType>(config.ipc, metric, id = "ipc-client").use { client ->
+                client<CallType>(config.ipc) {
+                    this.metric = metric
+                }.use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
                         client.send(CallType.values().random(), buf) {

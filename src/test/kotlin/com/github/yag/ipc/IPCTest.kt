@@ -78,16 +78,56 @@ class IPCTest {
         }.use { server ->
             try {
                 client<String> {
-                    endpoint = server.endpoint
-                    connectRetry.maxRetries = 0
+                    config {
+                        endpoint = server.endpoint
+                        connectRetry.maxRetries = 0
+                    }
                 }
                 fail()
             } catch (e: ConnectionRejectException) {
             }
 
             client<String> {
-                endpoint = server.endpoint
-                headers["token"] = "foo"
+                config {
+                    endpoint = server.endpoint
+                    headers["token"] = "foo"
+                }
+            }.use { client ->
+                client.sendSync("foo", requestData).let {
+                    assertEquals(StatusCode.NOT_FOUND, it.status())
+                    assertFailsWith(UnsupportedOperationException::class) {
+                        it.body()
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun testPrompt() {
+        server<String> {
+            prompt {
+                "hello".toByteArray(Charsets.UTF_8)
+            }
+            connection {
+                add {
+                    assertEquals("hello", it.promptData.toString(Charsets.UTF_8))
+                    val body = ByteArray(5)
+                    it.connectRequest.body.get(body)
+                    assertEquals("world", body.toString(Charsets.UTF_8))
+                }
+            }
+        }.use { server ->
+            client<String> {
+                prompt {
+                    val body = ByteArray(5)
+                    it.body.get(body)
+                    assertEquals("hello", body.toString(Charsets.UTF_8))
+                    "world".toByteArray(Charsets.UTF_8)
+                }
+                config {
+                    endpoint = server.endpoint
+                }
             }.use { client ->
                 client.sendSync("foo", requestData).let {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
@@ -109,7 +149,9 @@ class IPCTest {
             }
         }.use { server ->
             client<String> {
-                endpoint = server.endpoint
+                config {
+                    endpoint = server.endpoint
+                }
             }.use { client ->
                 doTest(client)
             }
@@ -139,7 +181,9 @@ class IPCTest {
             }
         }.use { server ->
             client<String> {
-                endpoint = server.endpoint
+                config {
+                    endpoint = server.endpoint
+                }
             }.use { client ->
                 assertEquals(1, requestData.refCnt())
                 client.sendSync("any", requestData).let {
@@ -167,7 +211,9 @@ class IPCTest {
             }
         }.use { server ->
             client<String> {
-                endpoint = server.endpoint
+                config {
+                    endpoint = server.endpoint
+                }
             }.use { client ->
                 val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
                 client.send("foo", requestData) {
@@ -202,7 +248,9 @@ class IPCTest {
             }
         }.use { server ->
             client<String> {
-                endpoint = server.endpoint
+                config {
+                    endpoint = server.endpoint
+                }
             }.use { client ->
                 client.sendSync("foo", requestData).let {
                     assertEquals(StatusCode.INTERNAL_ERROR, it.status())
@@ -235,7 +283,9 @@ class IPCTest {
             }
         }.use { server ->
             client<String> {
-                endpoint = server.endpoint
+                config {
+                    endpoint = server.endpoint
+                }
             }.use { client ->
                 val latch = CountDownLatch(10000)
                 repeat(10000) {
@@ -268,9 +318,11 @@ class IPCTest {
             }
         }
         client<String> {
-            endpoint = server.endpoint
-            heartbeatTimeoutMs = Long.MAX_VALUE
-            connectRetry.maxRetries = 0
+            config {
+                endpoint = server.endpoint
+                heartbeatTimeoutMs = Long.MAX_VALUE
+                connectRetry.maxRetries = 0
+            }
         }.use { client ->
             assertTrue(client.isConnected())
 
@@ -293,10 +345,12 @@ class IPCTest {
         }.use { server ->
             server.ignoreHeartbeat = true
             client<String> {
-                endpoint = server.endpoint
-                heartbeatIntervalMs = 500
-                heartbeatTimeoutMs = 2000
-                connectRetry.maxRetries = 0
+                config {
+                    endpoint = server.endpoint
+                    heartbeatIntervalMs = 500
+                    heartbeatTimeoutMs = 2000
+                    connectRetry.maxRetries = 0
+                }
             }.use { client ->
                 eventually(3000) {
                     assertFalse(client.isConnected())
@@ -318,10 +372,12 @@ class IPCTest {
             }
         }.use { server ->
             client<String> {
-                endpoint = server.endpoint
-                heartbeatIntervalMs = 2000
-                heartbeatTimeoutMs = 10000
-                connectRetry.maxRetries = 0
+                config {
+                    endpoint = server.endpoint
+                    heartbeatIntervalMs = 2000
+                    heartbeatTimeoutMs = 10000
+                    connectRetry.maxRetries = 0
+                }
             }.use { client ->
                 eventually(3000) {
                     assertFalse(client.isConnected())
@@ -341,9 +397,11 @@ class IPCTest {
             }
         }.use { server ->
             client<String> {
-                endpoint = server.endpoint
-                heartbeatIntervalMs = 500
-                heartbeatTimeoutMs = 1000
+                config {
+                    endpoint = server.endpoint
+                    heartbeatIntervalMs = 500
+                    heartbeatTimeoutMs = 1000
+                }
             }.use { client ->
                 repeat(10) {
                     assertEquals(StatusCode.NOT_FOUND, client.sendSync("any", requestData).status())
@@ -370,12 +428,13 @@ class IPCTest {
             }
 
             client<String> {
-                endpoint = server.endpoint
-                heartbeatIntervalMs = 500
-                heartbeatTimeoutMs = 1000
+                config {
+                    endpoint = server.endpoint
+                    heartbeatIntervalMs = 500
+                    heartbeatTimeoutMs = 1000
 
-                requestTimeoutMs = 2000
-
+                    requestTimeoutMs = 2000
+                }
             }.use { client ->
                 eventually(2000) {
                     assertFalse(client.isConnected())
@@ -409,10 +468,12 @@ class IPCTest {
         val cost = measureTimeMillis {
             assertFailsWith<ConnectException> {
                 client<String> {
-                    endpoint = server.endpoint
-                    channel.connectionTimeoutMs = 1000
-                    connectRetry.maxRetries = 1
-                    connectRetry.maxTimeElapsedMs = 5000
+                    config {
+                        endpoint = server.endpoint
+                        channel.connectionTimeoutMs = 1000
+                        connectRetry.maxRetries = 1
+                        connectRetry.maxTimeElapsedMs = 5000
+                    }
                 }.close()
             }
         }
@@ -432,7 +493,9 @@ class IPCTest {
         val thread = thread {
             assertFailsWith<ConnectException> {
                 client.set(client {
-                    endpoint = server.endpoint
+                    config {
+                        endpoint = server.endpoint
+                    }
                 })
             }
         }

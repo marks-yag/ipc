@@ -20,6 +20,7 @@ package com.github.yag.ipc.client
 import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
+import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.daemon
 import com.github.yag.retry.DefaultErrorHandler
@@ -42,6 +43,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class IPCClient<T : Any>(
     private val config: IPCClientConfig,
+    private val promptHandler: (Prompt) -> ByteArray,
     private val metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
@@ -60,7 +62,7 @@ class IPCClient<T : Any>(
 
                     Thread.sleep(config.connectBackOff.baseIntervalMs)
                     client = retry.call {
-                        RawIPCClient(config, metric, id)
+                        RawIPCClient(config, promptHandler, metric, id)
                     }
                 } catch (e: InterruptedException) {
                 }
@@ -73,7 +75,7 @@ class IPCClient<T : Any>(
 
     init {
         client = retry.call {
-            RawIPCClient(config, metric, id)
+            RawIPCClient(config, promptHandler, metric, id)
         }
         monitor = daemon("connection-monitor") {
             Monitor(it)
@@ -138,21 +140,3 @@ class IPCClient<T : Any>(
 
 }
 
-/**
- * Create IPC client.
- * @param T call type
- * @param config client config
- * @param metric metric registry
- * @param id client id
- * @param init init block of client config
- * @return created IPC client.
- */
-fun <T : Any> client(
-    config: IPCClientConfig = IPCClientConfig(),
-    metric: MetricRegistry = MetricRegistry(),
-    id: String = UUID.randomUUID().toString(),
-    init: IPCClientConfig.() -> Unit
-): IPCClient<T> {
-    config.init()
-    return IPCClient(config, metric, id)
-}

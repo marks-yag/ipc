@@ -9,7 +9,7 @@ struct ConnectRequest {
 1: required string version
 2: optional i64 requestTimeoutMs
 3: optional map<string, string> headers
-4: optional binary body
+4: required binary body
 }
 
 struct ConnectionAccepted {

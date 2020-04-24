@@ -22,6 +22,7 @@ import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.IPCClient
+import com.github.yag.ipc.client.client
 import com.github.yag.ipc.isSuccessful
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.ExponentialBackOffPolicy
@@ -67,7 +68,10 @@ object IPCSmokeClient {
 
                 try {
                     retry.call {
-                        IPCClient<CallType>(config.ipc, metric, "ipc-client")
+                        client<CallType>(config.ipc) {
+                            this.metric = metric
+                            this.id = "ipc-client"
+                        }
                     }.use { client ->
                         LOG.info("Create new client, alive for {}ms.", aliveMs)
                         clients.mark()

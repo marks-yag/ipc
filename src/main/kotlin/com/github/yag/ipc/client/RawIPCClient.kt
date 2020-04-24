@@ -62,6 +62,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.SocketException
+import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.LinkedBlockingQueue
@@ -74,6 +75,7 @@ import kotlin.system.measureTimeMillis
 
 internal class RawIPCClient<T : Any>(
     private val config: IPCClientConfig,
+    private val promptHandler: (Prompt) -> ByteArray,
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
@@ -138,7 +140,7 @@ internal class RawIPCClient<T : Any>(
             channel = bootstrap.connect(config.endpoint).sync().channel().also {
                 prompt = promptFuture.get()
 
-                val connectionRequest = ConnectRequest("V1")
+                val connectionRequest = ConnectRequest("V1", ByteBuffer.wrap(promptHandler(prompt)))
                 if (config.headers.isNotEmpty()) {
                     connectionRequest.setHeaders(config.headers)
                 }

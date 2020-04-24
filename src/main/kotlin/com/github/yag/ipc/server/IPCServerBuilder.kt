@@ -23,16 +23,18 @@ import io.netty.buffer.Unpooled
 import java.util.UUID
 
 class IPCServerBuilder<T : Any>(
-    private var ipcServerConfig: IPCServerConfig,
-    private val metric: MetricRegistry,
-    val id: String
+    private var ipcServerConfig: IPCServerConfig
 ) {
 
-    private val rootHandler = RootRequestHandler<T>()
+    var id: String = UUID.randomUUID().toString()
 
-    private val connectionHandler = ChainConnectionHandler()
+    var metric: MetricRegistry = MetricRegistry()
 
-    private var promptData: () -> ByteArray = { ByteArray(0) }
+    var rootHandler = RootRequestHandler<T>()
+
+    var connectionHandler = ChainConnectionHandler()
+
+    var promptData: () -> ByteArray = { ByteArray(0) }
 
     fun config(init: IPCServerConfig.() -> Unit) {
         ipcServerConfig.init()
@@ -57,11 +59,9 @@ class IPCServerBuilder<T : Any>(
 
 fun <T : Any> server(
     config: IPCServerConfig = IPCServerConfig(),
-    metric: MetricRegistry = MetricRegistry(),
-    id: String = UUID.randomUUID().toString(),
     init: IPCServerBuilder<T>.() -> Unit
 ): IPCServer {
-    val builder = IPCServerBuilder<T>(config, metric, id)
+    val builder = IPCServerBuilder<T>(config)
     builder.init()
     return builder.build()
 }
