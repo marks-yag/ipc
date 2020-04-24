@@ -43,9 +43,8 @@ object IPCBenchServer {
             .convertDurationsTo(TimeUnit.MILLISECONDS).build()
         reporter.start(1, TimeUnit.SECONDS)
 
-
-
-        server<CallType>(config.ipc, metric) {
+        server<CallType>(config.ipc) {
+            this.metric = metric
             request {
                 CallType.values().forEach { callType ->
                     map(callType) {

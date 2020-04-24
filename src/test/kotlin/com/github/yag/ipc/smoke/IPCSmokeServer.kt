@@ -45,7 +45,8 @@ object IPCSmokeServer {
         val random = Random(System.currentTimeMillis())
 
         while (true) {
-            val server = server<CallType>(config.ipc, metric) {
+            val server = server<CallType>(config.ipc) {
+                this.metric = metric
                 request {
                     CallType.values().forEach { callType ->
                         map(callType) {

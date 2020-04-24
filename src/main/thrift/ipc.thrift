@@ -1,10 +1,15 @@
 namespace java com.github.yag.ipc
 
+struct Prompt {
+1: required string version
+2: required binary body
+}
+
 struct ConnectRequest {
-1: string version
+1: required string version
 2: optional i64 requestTimeoutMs
 3: optional map<string, string> headers
-4: optional binary body
+4: required binary body
 }
 
 struct ConnectionAccepted {
@@ -15,7 +20,7 @@ struct ConnectionAccepted {
 
 struct ConnectionRejected {
 1: optional i32 code
-2: string message
+2: required string message
 }
 
 union ConnectionResponse {

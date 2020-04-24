@@ -26,6 +26,7 @@ import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PacketCodec
 import com.github.yag.ipc.PacketEncoder
+import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.RequestPacketHeader
 import com.github.yag.ipc.ResponseHeader
@@ -61,6 +62,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.SocketException
+import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.LinkedBlockingQueue
@@ -73,11 +75,16 @@ import kotlin.system.measureTimeMillis
 
 internal class RawIPCClient<T : Any>(
     private val config: IPCClientConfig,
+    private val promptHandler: (Prompt) -> ByteArray,
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
 
     private val bootstrap: Bootstrap
+
+    private val prompt: Prompt
+
+    private val promptFuture: SettableFuture<Prompt>
 
     private val connection: ConnectionAccepted
 
@@ -124,12 +131,16 @@ internal class RawIPCClient<T : Any>(
         }
         closed.set(false)
         currentId = 0L
-        connectFuture = SettableFuture.create<ConnectionAccepted>()
+
+        promptFuture = SettableFuture.create()
+        connectFuture = SettableFuture.create()
 
         var succ = false
         try {
             channel = bootstrap.connect(config.endpoint).sync().channel().also {
-                val connectionRequest = ConnectRequest("V1")
+                prompt = promptFuture.get()
+
+                val connectionRequest = ConnectRequest("V1", ByteBuffer.wrap(promptHandler(prompt)))
                 if (config.headers.isNotEmpty()) {
                     connectionRequest.setHeaders(config.headers)
                 }
@@ -318,10 +329,18 @@ internal class RawIPCClient<T : Any>(
     inner class ResponseDecoder : ByteToMessageDecoder() {
 
         @Volatile
+        private var prompted = false
+
+        @Volatile
         private var connected = false
 
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
-            if (!connected) {
+            if (!prompted) {
+                val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
+                val prompt = Prompt().apply { read(protocol) }
+                prompted = true
+                promptFuture.set(prompt)
+            } else if (!connected) {
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
                 val connectionResponse = ConnectionResponse().apply { read(protocol) }
                 connected = connectionResponse.isSetAccepted

@@ -25,6 +25,7 @@ import com.github.yag.ipc.ConnectionResponse
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PacketCodec
 import com.github.yag.ipc.PacketEncoder
+import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.RequestPacketHeader
 import com.github.yag.ipc.TDecoder
@@ -33,6 +34,7 @@ import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufInputStream
 import io.netty.buffer.ByteBufUtil
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
@@ -48,12 +50,15 @@ import io.netty.handler.timeout.ReadTimeoutException
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.traffic.GlobalTrafficShapingHandler
 import io.netty.util.concurrent.DefaultThreadFactory
+import org.apache.thrift.protocol.TBinaryProtocol
+import org.apache.thrift.transport.TIOStreamTransport
 import org.jetbrains.annotations.TestOnly
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.BindException
 import java.net.InetSocketAddress
+import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -65,6 +70,7 @@ class IPCServer internal constructor(
     private val config: IPCServerConfig,
     private val requestHandler: RequestHandler,
     private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
+    private val promptData: () -> ByteArray,
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
@@ -129,7 +135,7 @@ class IPCServer internal constructor(
         override fun initChannel(socketChannel: SocketChannel) {
             LOG.debug("New tcp connection arrived.")
 
-            val connection = Connection(UUID.randomUUID().toString())
+            val connection = Connection(UUID.randomUUID().toString(), promptData())
 
             socketChannel.pipeline().apply {
                 addLast(ReadTimeoutHandler(config.maxIdleTimeMs, TimeUnit.MILLISECONDS))
@@ -138,6 +144,7 @@ class IPCServer internal constructor(
                 addLast(LengthFieldBasedFrameDecoder(config.maxReqeustPacketSize, 0, 4, 0, 4))
                 addLast(LengthFieldPrepender(4, 0))
 
+                addLast(TEncoder(Prompt::class.java))
                 addLast(TEncoder(ConnectionResponse::class.java))
                 addLast(PacketEncoder())
 
@@ -145,6 +152,8 @@ class IPCServer internal constructor(
 
                 addLast(RequestDispatcher(connection))
             }
+
+            socketChannel.writeAndFlush(Prompt("V1", ByteBuffer.wrap(promptData())))
         }
 
     }

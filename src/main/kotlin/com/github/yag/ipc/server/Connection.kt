@@ -21,7 +21,7 @@ import com.github.yag.ipc.ConnectRequest
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
-class Connection(val id: String) {
+class Connection(val id: String, var promptData: ByteArray) {
 
     lateinit var localAddress: InetSocketAddress
         internal set

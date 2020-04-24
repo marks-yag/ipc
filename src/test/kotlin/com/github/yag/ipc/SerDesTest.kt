@@ -18,6 +18,7 @@
 package com.github.yag.ipc
 
 import io.netty.buffer.Unpooled
+import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -27,6 +28,7 @@ class SerDesTest {
     fun test() {
         val request = ConnectRequest().apply {
             setVersion("v1")
+            setBody(ByteBuffer.wrap("foo".toByteArray()))
             setRequestTimeoutMs(1000)
         }
 
