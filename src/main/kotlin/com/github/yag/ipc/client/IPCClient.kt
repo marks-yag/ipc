@@ -25,11 +25,10 @@ import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.daemon
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry
-import com.google.common.util.concurrent.SettableFuture
 import io.netty.buffer.ByteBuf
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -99,9 +98,9 @@ class IPCClient<T : Any>(
      * @return Future object of response packet
      */
     fun send(type: T, data: ByteBuf): Future<Packet<ResponseHeader>> {
-        val future = SettableFuture.create<Packet<ResponseHeader>>()
+        val future = CompletableFuture<Packet<ResponseHeader>>()
         send(type, data) {
-            future.set(it.also {
+            future.complete(it.also {
                 it.body.retain()
             })
         }

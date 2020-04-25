@@ -37,7 +37,6 @@ import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
 import com.github.yag.ipc.daemon
 import com.github.yag.ipc.status
-import com.google.common.util.concurrent.SettableFuture
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufInputStream
@@ -63,6 +62,7 @@ import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.SocketException
 import java.nio.ByteBuffer
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.LinkedBlockingQueue
@@ -84,11 +84,11 @@ internal class RawIPCClient<T : Any>(
 
     private val prompt: Prompt
 
-    private val promptFuture: SettableFuture<Prompt>
+    private val promptFuture: CompletableFuture<Prompt>
 
     private val connection: ConnectionAccepted
 
-    private val connectFuture: SettableFuture<ConnectionAccepted>
+    private val connectFuture: CompletableFuture<ConnectionAccepted>
 
     internal val channel: Channel
 
@@ -132,8 +132,8 @@ internal class RawIPCClient<T : Any>(
         closed.set(false)
         currentId = 0L
 
-        promptFuture = SettableFuture.create()
-        connectFuture = SettableFuture.create()
+        promptFuture = CompletableFuture()
+        connectFuture = CompletableFuture()
 
         var succ = false
         try {
@@ -339,15 +339,15 @@ internal class RawIPCClient<T : Any>(
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
                 val prompt = Prompt().apply { read(protocol) }
                 prompted = true
-                promptFuture.set(prompt)
+                promptFuture.complete(prompt)
             } else if (!connected) {
                 val protocol = TBinaryProtocol(TIOStreamTransport(ByteBufInputStream(buf)))
                 val connectionResponse = ConnectionResponse().apply { read(protocol) }
                 connected = connectionResponse.isSetAccepted
                 if (connected) {
-                    connectFuture.set(connectionResponse.accepted)
+                    connectFuture.complete(connectionResponse.accepted)
                 } else {
-                    connectFuture.setException(ConnectionRejectException(connectionResponse.rejected.message))
+                    connectFuture.completeExceptionally(ConnectionRejectException(connectionResponse.rejected.message))
                     ctx.close()
                 }
             } else {
