@@ -20,6 +20,7 @@ package com.github.yag.ipc.server
 import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
+import com.github.yag.ipc.ConnectionRejectException
 import com.github.yag.ipc.ConnectionRejected
 import com.github.yag.ipc.ConnectionResponse
 import com.github.yag.ipc.Packet
@@ -62,6 +63,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.Exception
 
 class IPCServer internal constructor(
     private val config: IPCServerConfig,
@@ -181,14 +183,21 @@ class IPCServer internal constructor(
                         connection.remoteAddress
                     )
                     ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.accepted(ConnectionAccepted(connection.id))))
-                } catch (e: Exception) {
+                } catch (e: ConnectionRejectException) {
                     LOG.debug(
                         "Reject connection, connectionId: {}, remoteAddress: {}.",
                         connection.id,
                         connection.remoteAddress
                     )
-                    ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.rejected(ConnectionRejected((e.message)))))
-                    ctx.close()
+                    handle(ctx, e)
+                } catch (e: Exception) {
+                    LOG.warn(
+                        "Validate connection failed, connectionId: {}, remoteAddress: {}.",
+                        connection.id,
+                        connection.remoteAddress,
+                        e
+                    )
+                    handle(ctx, e)
                 }
             } else {
                 val packet = PacketCodec.decode(buf, RequestPacketHeader())
@@ -202,6 +211,11 @@ class IPCServer internal constructor(
                     }
                 }
             }
+        }
+
+        private fun handle(ctx: ChannelHandlerContext, e: Exception) {
+            ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.rejected(ConnectionRejected((e.message)))))
+            ctx.close()
         }
     }
 
