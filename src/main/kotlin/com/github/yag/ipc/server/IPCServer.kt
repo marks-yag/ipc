@@ -201,6 +201,7 @@ class IPCServer internal constructor(
                 }
             } else {
                 val packet = PacketCodec.decode(buf, RequestPacketHeader())
+                connection.lastContactTimestamp = System.currentTimeMillis()
                 if (!packet.isHeartbeat()) {
                     out.add(packet)
                 } else {
@@ -285,6 +286,7 @@ class IPCServer internal constructor(
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
+            connection.inactive = true
             LOG.debug("Channel inactive: {}.", connection.id)
         }
     }

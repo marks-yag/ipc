@@ -31,6 +31,10 @@ class Connection(val id: String, var promptData: ByteArray) {
 
     lateinit var connectRequest: ConnectRequest
 
+    var lastContactTimestamp: Long = 0
+
+    var inactive = false
+
     private val data by lazy {
         ConcurrentHashMap<String, Any>()
     }
