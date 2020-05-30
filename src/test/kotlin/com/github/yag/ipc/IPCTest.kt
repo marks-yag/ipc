@@ -26,9 +26,12 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import java.net.ConnectException
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
+import kotlin.random.Random
 import kotlin.system.measureTimeMillis
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -505,6 +508,71 @@ class IPCTest {
         thread.join()
 
         assertFalse(client.isDone)
+    }
+
+    @Test
+    fun testMultipleClients() {
+        server<String> {
+            request {
+                map("add") {
+                    val data = it.body
+                    val lhs = data.readLong()
+                    val rhs = data.readLong()
+                    val result = Unpooled.buffer(8, 8)
+                    result.writeLong(lhs + rhs)
+                    it.ok(result)
+                }
+            }
+        }.use { server ->
+            val threads = Runtime.getRuntime().availableProcessors()
+            val clients = Array(threads) {
+                client<String> {
+                    config {
+                        endpoint = server.endpoint
+                    }
+                }
+            }
+
+            val r = Random(System.currentTimeMillis())
+
+            val loop = 10000
+
+            val executor = Executors.newCachedThreadPool()
+
+            var error = AtomicBoolean(false)
+
+            repeat(threads) {
+                executor.submit {
+                    for (i in 0 .. loop) {
+                        val lhs = r.nextLong()
+                        val rhs = r.nextLong()
+                        val request = Unpooled.buffer(16)
+                        request.writeLong(lhs)
+                        request.writeLong(rhs)
+                        val result = clients[it].sendSync("add", request)
+                        val sum = result.body.use {
+                            it.readLong()
+                        }
+
+                        if (sum != lhs + rhs) {
+                            error.set(true)
+                            System.err.println("$lhs + $rhs != $sum")
+                            break
+                        }
+                    }
+                }
+            }
+
+
+            executor.shutdown()
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MICROSECONDS)
+
+            assertFalse(error.get())
+
+            clients.forEach {
+                it.close()
+            }
+        }
     }
 
 }
