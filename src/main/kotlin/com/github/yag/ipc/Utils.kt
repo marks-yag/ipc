@@ -58,3 +58,9 @@ fun <T> ByteBuf.use(body: (ByteBuf) -> T): T {
         release()
     }
 }
+
+fun ByteBuf.readArray() : ByteArray {
+    return ByteArray(readableBytes()).also {
+        readBytes(it)
+    }
+}

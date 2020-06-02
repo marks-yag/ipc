@@ -32,13 +32,19 @@ fun Packet<ResponseHeader>.status(): StatusCode = header.thrift.statusCode
 fun Packet<ResponseHeader>.isSuccessful(): Boolean = status().isSuccessful()
 
 fun Packet<ResponseHeader>.body(): ByteBuf {
-    return when (status()) {
-        StatusCode.OK, StatusCode.PARTIAL_CONTENT -> body.retain()
-        StatusCode.NOT_FOUND -> throw UnsupportedOperationException()
-        StatusCode.TIMEOUT -> throw TimeoutException()
-        StatusCode.CONNECTION_ERROR -> throw ConnectException()
-        StatusCode.INTERNAL_ERROR -> throw RemoteException(body.retain())
-    }.also {
-        body.release()
+    val status = status()
+    return if (status.isSuccessful()) {
+        body
+    } else {
+        val bodyArray = body.use {
+            it.readArray()
+        }
+        return when (status) {
+            StatusCode.NOT_FOUND -> throw UnsupportedOperationException()
+            StatusCode.TIMEOUT -> throw TimeoutException()
+            StatusCode.CONNECTION_ERROR -> throw ConnectException()
+            StatusCode.INTERNAL_ERROR -> throw RemoteException(bodyArray)
+            else -> throw IllegalStateException("Impossible status: $status")
+        }
     }
 }

@@ -19,4 +19,8 @@ package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
 
-class RemoteException(val content: ByteBuf) : Exception("Remote call failed.")
+class RemoteException(val content: ByteArray) : Exception("Remote call failed.") {
+
+    constructor(buf: ByteBuf) : this(buf.readArray())
+
+}
