@@ -39,7 +39,7 @@ fun Packet<ResponseHeader>.body(): ByteBuf {
         val bodyArray = body.use {
             it.readArray()
         }
-        return when (status) {
+        when (status) {
             StatusCode.NOT_FOUND -> throw UnsupportedOperationException()
             StatusCode.TIMEOUT -> throw TimeoutException()
             StatusCode.CONNECTION_ERROR -> throw ConnectException()
