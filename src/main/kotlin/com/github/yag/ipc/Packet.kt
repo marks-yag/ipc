@@ -21,9 +21,13 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import org.apache.thrift.TSerializable
 
-class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: ByteBuf) {
+class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: ByteBuf) : AutoCloseable {
 
     internal fun isHeartbeat() = header.isHeartbeat(header.thrift)
+
+    override fun close() {
+        body.release()
+    }
 
     companion object {
 
