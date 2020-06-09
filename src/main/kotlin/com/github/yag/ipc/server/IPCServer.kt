@@ -42,13 +42,16 @@ import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollEventLoopGroup
+import io.netty.channel.epoll.EpollServerDomainSocketChannel
 import io.netty.channel.epoll.EpollServerSocketChannel
 import io.netty.channel.kqueue.KQueue
 import io.netty.channel.kqueue.KQueueEventLoopGroup
+import io.netty.channel.kqueue.KQueueServerDomainSocketChannel
 import io.netty.channel.kqueue.KQueueServerSocketChannel
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
+import io.netty.channel.unix.DomainSocketAddress
 import io.netty.handler.codec.ByteToMessageDecoder
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
@@ -84,6 +87,8 @@ class IPCServer internal constructor(
 
     val endpoint: Endpoint<InetSocketAddress>
 
+    val udsEndpoint: Endpoint<DomainSocketAddress>?
+
     private val handler = ChildChannelHandler()
 
     private val trafficExecutor = Executors.newSingleThreadScheduledExecutor()
@@ -109,6 +114,48 @@ class IPCServer internal constructor(
             LOG.info("Start ipc server.")
         }
         endpoint = createInetEndpoint()
+        if (config.socket.isNotBlank()) {
+            udsEndpoint = createUdsEndpoint()
+        } else {
+            udsEndpoint = null
+        }
+    }
+
+    private fun createUdsEndpoint() : Endpoint<DomainSocketAddress> {
+        val serverBootstrap = ServerBootstrap().apply {
+            when {
+                Epoll.isAvailable() -> {
+                    channel(EpollServerDomainSocketChannel::class.java)
+                        .group(
+                            EpollEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
+                            EpollEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+                        )
+                }
+                KQueue.isAvailable() -> {
+                    channel(KQueueServerDomainSocketChannel::class.java)
+                        .group(
+                            KQueueEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
+                            KQueueEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+                        )
+                }
+                else -> throw UnsupportedOperationException()
+            }
+        }.applyChannelConfig(config.channelConfig).childHandler(handler)
+
+        try {
+            val channelFuture = serverBootstrap.bind(DomainSocketAddress(config.socket)).sync()
+            val address = channelFuture.channel().localAddress() as DomainSocketAddress
+            addThreadName(id) {
+                LOG.info("IPC server started on: {}.", address)
+            }
+
+            return Endpoint(serverBootstrap, channelFuture, address)
+        } catch (e: BindException) {
+            addThreadName(id) {
+                LOG.error("Port conflict: {}.", config.port, e)
+            }
+            throw e
+        }
     }
 
     private fun createInetEndpoint() : Endpoint<InetSocketAddress> {
@@ -356,6 +403,8 @@ class IPCServer internal constructor(
                 LOG.debug("Request handler closed.")
 
                 endpoint.close()
+
+                udsEndpoint?.close()
 
                 LOG.info("IPC server closed.")
             }
