@@ -40,6 +40,12 @@ import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
+import io.netty.channel.epoll.Epoll
+import io.netty.channel.epoll.EpollEventLoopGroup
+import io.netty.channel.epoll.EpollServerSocketChannel
+import io.netty.channel.kqueue.KQueue
+import io.netty.channel.kqueue.KQueueEventLoopGroup
+import io.netty.channel.kqueue.KQueueServerSocketChannel
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
@@ -50,12 +56,14 @@ import io.netty.handler.timeout.ReadTimeoutException
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.traffic.GlobalTrafficShapingHandler
 import io.netty.util.concurrent.DefaultThreadFactory
+import io.netty.util.internal.PlatformDependent
 import org.jetbrains.annotations.TestOnly
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.BindException
 import java.net.InetSocketAddress
+import java.net.SocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
 import java.util.UUID
@@ -100,15 +108,22 @@ class IPCServer internal constructor(
         addThreadName(id) {
             LOG.info("Start ipc server.")
         }
+        endpoint = createInetEndpoint()
+    }
+
+    private fun createInetEndpoint() : Endpoint<InetSocketAddress> {
         val serverBootstrap = ServerBootstrap().apply {
-            channel(NioServerSocketChannel::class.java)
-                .group(
-                    NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
-                    NioEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
-                )
-                .applyChannelConfig(config.channelConfig)
-                .childHandler(handler)
-        }
+            when (config.inetBackend) {
+                InetBackend.AUTO -> {
+                    when {
+                        Epoll.isAvailable() -> epoll()
+                        KQueue.isAvailable() -> kqueue()
+                        else -> nio()
+                    }
+                }
+                InetBackend.NIO -> nio()
+            }
+        }.applyChannelConfig(config.channelConfig).childHandler(handler)
 
         try {
             val channelFuture = serverBootstrap.bind(config.host, config.port).sync()
@@ -117,15 +132,49 @@ class IPCServer internal constructor(
                 LOG.info("IPC server started on: {}.", address)
             }
 
-            endpoint = Endpoint(serverBootstrap, channelFuture, address)
+            return Endpoint(serverBootstrap, channelFuture, address)
         } catch (e: BindException) {
             addThreadName(id) {
                 LOG.error("Port conflict: {}.", config.port, e)
             }
             throw e
         }
+    }
 
+    private fun ServerBootstrap.nio(): ServerBootstrap {
+        LOG.debug("Using nio.")
+        return channel(NioServerSocketChannel::class.java)
+            .group(
+                NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
+                NioEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+            )
+    }
 
+    private fun ServerBootstrap.kqueue(): ServerBootstrap {
+        LOG.debug("Using kqueue.")
+        return channel(KQueueServerSocketChannel::class.java)
+            .group(
+                KQueueEventLoopGroup(
+                    config.parentThreads,
+                    DefaultThreadFactory("ipc-server-parent-$id", true)
+                ),
+                KQueueEventLoopGroup(
+                    config.childThreads,
+                    DefaultThreadFactory("ipc-server-child-$id", true)
+                )
+            )
+    }
+
+    private fun ServerBootstrap.epoll(): ServerBootstrap {
+        LOG.debug("Using epoll.")
+        return channel(EpollServerSocketChannel::class.java)
+            .group(
+                EpollEventLoopGroup(
+                    config.parentThreads,
+                    DefaultThreadFactory("ipc-server-parent-$id", true)
+                ),
+                EpollEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+            )
     }
 
 
