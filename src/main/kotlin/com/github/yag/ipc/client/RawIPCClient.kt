@@ -54,6 +54,7 @@ import io.netty.channel.kqueue.KQueueEventLoopGroup
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
+import io.netty.channel.unix.DomainSocketAddress
 import io.netty.channel.unix.DomainSocketChannel
 import io.netty.handler.codec.ByteToMessageDecoder
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
@@ -69,6 +70,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import java.net.InetSocketAddress
+import java.net.SocketAddress
 import java.net.SocketException
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
@@ -132,7 +134,8 @@ internal class RawIPCClient<T : Any>(
     private val sendTime = metric.histogram("ipc-client-send-time")
 
     init {
-        bootstrap = if (config.endpoint is InetSocketAddress) {
+        val address = getSocketAddress(config.endpoint)
+        bootstrap = if (address is InetSocketAddress) {
             Bootstrap().apply {
                 channel(NioSocketChannel::class.java)
                     .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
@@ -163,7 +166,7 @@ internal class RawIPCClient<T : Any>(
 
         var succ = false
         try {
-            channel = bootstrap.connect(config.endpoint).sync().channel().also {
+            channel = bootstrap.connect(address).sync().channel().also {
                 prompt = promptFuture.get()
 
                 val connectionRequest = ConnectRequest("V1", ByteBuffer.wrap(promptHandler(prompt)))
@@ -283,6 +286,15 @@ internal class RawIPCClient<T : Any>(
                 }
             }
         }.apply { start() }
+    }
+
+    fun getSocketAddress(endpoint: String) : SocketAddress {
+        val sa = endpoint.split(":")
+        return if (sa.size == 2) {
+            InetSocketAddress(sa.first(), sa.last().toInt())
+        } else {
+            DomainSocketAddress(endpoint)
+        }
     }
 
     fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {

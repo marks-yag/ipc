@@ -19,10 +19,22 @@ package com.github.yag.ipc.server
 
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.ChannelFuture
+import io.netty.channel.unix.DomainSocketAddress
 import org.slf4j.LoggerFactory
+import java.net.InetSocketAddress
 import java.net.SocketAddress
 
 class Endpoint<T : SocketAddress>(val serverBootstrap: ServerBootstrap, val channelFuture: ChannelFuture, val socketAddress: T) : AutoCloseable {
+
+    fun address() : String {
+        return if (socketAddress is InetSocketAddress) {
+            socketAddress.address.hostAddress + ":" + socketAddress.port
+        } else if (socketAddress is DomainSocketAddress) {
+            socketAddress.path()
+        } else {
+            socketAddress.toString()
+        }
+    }
 
     override fun close() {
         channelFuture.channel().close().sync()

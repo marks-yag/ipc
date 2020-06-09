@@ -86,7 +86,7 @@ class IPCTest {
             try {
                 client<String> {
                     config {
-                        endpoint = server.endpoint.socketAddress
+                        endpoint = server.endpoint.address()
                         connectRetry.maxRetries = 0
                     }
                 }
@@ -96,7 +96,7 @@ class IPCTest {
 
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                     headers["token"] = "foo"
                 }
             }.use { client ->
@@ -133,7 +133,7 @@ class IPCTest {
                     "world".toByteArray(Charsets.UTF_8)
                 }
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                 }
             }.use { client ->
                 client.sendSync("foo", requestData).let {
@@ -157,7 +157,7 @@ class IPCTest {
         }.use { server ->
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                 }
             }.use { client ->
                 doTest(client)
@@ -177,7 +177,7 @@ class IPCTest {
             server.udsEndpoint?.let {
                 client<String> {
                     config {
-                        endpoint = it.socketAddress
+                        endpoint = it.address()
                     }
                 }.use { client ->
                     doTest(client)
@@ -210,7 +210,7 @@ class IPCTest {
         }.use { server ->
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                 }
             }.use { client ->
                 assertEquals(1, requestData.refCnt())
@@ -240,7 +240,7 @@ class IPCTest {
         }.use { server ->
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                 }
             }.use { client ->
                 val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
@@ -277,7 +277,7 @@ class IPCTest {
         }.use { server ->
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                 }
             }.use { client ->
                 client.sendSync("foo", requestData).let {
@@ -312,7 +312,7 @@ class IPCTest {
         }.use { server ->
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                 }
             }.use { client ->
                 val latch = CountDownLatch(10000)
@@ -347,7 +347,7 @@ class IPCTest {
         }
         client<String> {
             config {
-                endpoint = server.endpoint.socketAddress
+                endpoint = server.endpoint.address()
                 heartbeatTimeoutMs = Long.MAX_VALUE
                 connectRetry.maxRetries = 0
             }
@@ -374,7 +374,7 @@ class IPCTest {
             server.ignoreHeartbeat = true
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                     heartbeatIntervalMs = 500
                     heartbeatTimeoutMs = 2000
                     connectRetry.maxRetries = 0
@@ -401,7 +401,7 @@ class IPCTest {
         }.use { server ->
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                     heartbeatIntervalMs = 2000
                     heartbeatTimeoutMs = 10000
                     connectRetry.maxRetries = 0
@@ -426,7 +426,7 @@ class IPCTest {
         }.use { server ->
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                     heartbeatIntervalMs = 500
                     heartbeatTimeoutMs = 1000
                 }
@@ -457,7 +457,7 @@ class IPCTest {
 
             client<String> {
                 config {
-                    endpoint = server.endpoint.socketAddress
+                    endpoint = server.endpoint.address()
                     heartbeatIntervalMs = 500
                     heartbeatTimeoutMs = 1000
 
@@ -497,7 +497,7 @@ class IPCTest {
             assertFailsWith<ConnectException> {
                 client<String> {
                     config {
-                        endpoint = server.endpoint.socketAddress
+                        endpoint = server.endpoint.address()
                         channel.connectionTimeoutMs = 1000
                         connectRetry.maxRetries = 1
                         connectRetry.maxTimeElapsedMs = 5000
@@ -522,7 +522,7 @@ class IPCTest {
             assertFailsWith<ConnectException> {
                 client.set(client {
                     config {
-                        endpoint = server.endpoint.socketAddress
+                        endpoint = server.endpoint.address()
                     }
                 })
             }
@@ -553,7 +553,7 @@ class IPCTest {
             val clients = Array(threads) {
                 client<String> {
                     config {
-                        endpoint = server.endpoint.socketAddress
+                        endpoint = server.endpoint.address()
                     }
                 }
             }
