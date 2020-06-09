@@ -15,35 +15,15 @@
  * under the License.
  */
 
-package com.github.yag.ipc.server
+package com.github.yag.ipc
 
-import com.github.yag.config.Value
-import com.github.yag.ipc.ChannelConfig
+import io.netty.channel.epoll.Epoll
+import io.netty.channel.kqueue.KQueue
 
-class IPCServerConfig {
+object Test {
 
-    @Value(required = true)
-    var host: String = "127.0.0.1"
-
-    @Value(required = true)
-    var port: Int = 0
-
-    @Value
-    var path: String = "/tmp/ipc.sock"
-
-    @Value
-    var maxRequestPacketSize = 1024 * 1024 * 10
-
-    @Value
-    var maxIdleTimeMs: Long = 30 * 1000
-
-    @Value
-    var parentThreads: Int = 0
-
-    @Value
-    var childThreads: Int = 0
-
-    @Value
-    var channelConfig = ChannelConfig()
-
+    @JvmStatic
+    fun main(args: Array<String>) {
+        KQueue.ensureAvailability()
+    }
 }

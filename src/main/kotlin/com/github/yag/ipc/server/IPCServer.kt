@@ -74,17 +74,13 @@ class IPCServer internal constructor(
     private val id: String
 ) : AutoCloseable {
 
-    private val serverBootstrap: ServerBootstrap
+    val endpoint: Endpoint<InetSocketAddress>
 
     private val handler = ChildChannelHandler()
-
-    private val channelFuture: ChannelFuture
 
     private val trafficExecutor = Executors.newSingleThreadScheduledExecutor()
 
     private val trafficHandler = GlobalTrafficShapingHandler(trafficExecutor, 1000)
-
-    val endpoint: InetSocketAddress
 
     private val messageReceived = metric.counter("ipc-server-message-received")
 
@@ -104,7 +100,7 @@ class IPCServer internal constructor(
         addThreadName(id) {
             LOG.info("Start ipc server.")
         }
-        serverBootstrap = ServerBootstrap().apply {
+        val serverBootstrap = ServerBootstrap().apply {
             channel(NioServerSocketChannel::class.java)
                 .group(
                     NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
@@ -115,17 +111,21 @@ class IPCServer internal constructor(
         }
 
         try {
-            channelFuture = serverBootstrap.bind(config.host, config.port).sync()
-            endpoint = channelFuture.channel().localAddress() as InetSocketAddress
+            val channelFuture = serverBootstrap.bind(config.host, config.port).sync()
+            val address = channelFuture.channel().localAddress() as InetSocketAddress
             addThreadName(id) {
-                LOG.info("IPC server started on: {}.", endpoint)
+                LOG.info("IPC server started on: {}.", address)
             }
+
+            endpoint = Endpoint(serverBootstrap, channelFuture, address)
         } catch (e: BindException) {
             addThreadName(id) {
                 LOG.error("Port conflict: {}.", config.port, e)
             }
             throw e
         }
+
+
     }
 
 
@@ -306,14 +306,7 @@ class IPCServer internal constructor(
 
                 LOG.debug("Request handler closed.")
 
-                channelFuture.channel().close().sync()
-
-                LOG.debug("Channel closed.")
-
-                serverBootstrap.config().let {
-                    it.group().shutdownGracefully()
-                    it.childGroup().shutdownGracefully()
-                }
+                endpoint.close()
 
                 LOG.info("IPC server closed.")
             }
