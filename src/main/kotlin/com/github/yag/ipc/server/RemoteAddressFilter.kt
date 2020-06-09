@@ -18,11 +18,14 @@
 package com.github.yag.ipc.server
 
 import com.github.yag.ipc.ConnectionRejectException
+import java.net.InetSocketAddress
 
 class RemoteAddressFilter(private val whiteList: Set<String>, private val blackList: Set<String>) : ConnectionHandler {
 
     override fun handle(connection: Connection) {
-        val remote = connection.remoteAddress.hostString
+        val address = connection.remoteAddress
+        check(address is InetSocketAddress)
+        val remote = address.hostString
         if (!whiteList.contains(remote) || blackList.contains(remote)) {
             throw ConnectionRejectException("$remote not allowed.")
         }

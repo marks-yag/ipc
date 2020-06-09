@@ -36,6 +36,7 @@ import com.github.yag.ipc.applyChannelConfig
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
+import io.netty.channel.Channel
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
@@ -65,6 +66,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.BindException
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.nio.ByteBuffer
@@ -225,9 +227,9 @@ class IPCServer internal constructor(
     }
 
 
-    inner class ChildChannelHandler : ChannelInitializer<SocketChannel>() {
+    inner class ChildChannelHandler : ChannelInitializer<Channel>() {
 
-        override fun initChannel(socketChannel: SocketChannel) {
+        override fun initChannel(socketChannel: Channel) {
             LOG.debug("New tcp connection arrived.")
 
             val connection = Connection(UUID.randomUUID().toString(), promptData())
@@ -266,8 +268,8 @@ class IPCServer internal constructor(
             if (!connected) {
                 LOG.debug("Handling incoming connect request from: {}.", ctx.channel().remoteAddress())
 
-                connection.remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
-                connection.localAddress = ctx.channel().localAddress() as InetSocketAddress
+                connection.remoteAddress = ctx.channel().remoteAddress()
+                connection.localAddress = ctx.channel().localAddress()
                 connection.connectRequest = TDecoder.decode(ConnectRequest(), buf)
 
                 try {

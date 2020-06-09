@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.SettableFuture
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import java.net.ConnectException
+import java.net.InetSocketAddress
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
@@ -68,8 +69,11 @@ class IPCTest {
         server<String> {
             connection {
                 add {
-                    if (it.remoteAddress.hostString != "127.0.0.1") {
-                        throw ConnectionRejectException("${it.remoteAddress.hostString} not allowed.")
+                    val address = it.remoteAddress
+                    if (address is InetSocketAddress) {
+                        if (address.hostString != "127.0.0.1") {
+                            throw ConnectionRejectException("${address.hostString} not allowed.")
+                        }
                     }
                 }
                 add {
@@ -157,6 +161,27 @@ class IPCTest {
                 }
             }.use { client ->
                 doTest(client)
+            }
+        }
+    }
+
+    @Test
+    fun testPingPongWithUds() {
+        server<String> {
+            request {
+                map("foo") { request ->
+                    request.ok(responseData.retain())
+                }
+            }
+        }.use { server ->
+            server.udsEndpoint?.let {
+                client<String> {
+                    config {
+                        endpoint = it.socketAddress
+                    }
+                }.use { client ->
+                    doTest(client)
+                }
             }
         }
     }

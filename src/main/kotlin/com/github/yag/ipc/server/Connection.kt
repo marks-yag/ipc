@@ -19,14 +19,15 @@ package com.github.yag.ipc.server
 
 import com.github.yag.ipc.ConnectRequest
 import java.net.InetSocketAddress
+import java.net.SocketAddress
 import java.util.concurrent.ConcurrentHashMap
 
 class Connection(val id: String, var promptData: ByteArray) {
 
-    lateinit var localAddress: InetSocketAddress
+    var localAddress: SocketAddress? = null
         internal set
 
-    lateinit var remoteAddress: InetSocketAddress
+    var remoteAddress: SocketAddress? = null
         internal set
 
     lateinit var connectRequest: ConnectRequest

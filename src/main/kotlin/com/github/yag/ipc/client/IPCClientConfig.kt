@@ -22,12 +22,13 @@ import com.github.yag.ipc.ChannelConfig
 import com.github.yag.retry.CountDownRetryPolicy
 import com.github.yag.retry.ExponentialBackOffPolicy
 import java.net.InetSocketAddress
+import java.net.SocketAddress
 import java.util.TreeMap
 
 class IPCClientConfig {
 
     @Value(required = true)
-    lateinit var endpoint: InetSocketAddress
+    lateinit var endpoint: SocketAddress
 
     @Value
     var threads: Int = 4

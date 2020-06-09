@@ -45,9 +45,16 @@ import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
+import io.netty.channel.epoll.Epoll
+import io.netty.channel.epoll.EpollDomainSocketChannel
+import io.netty.channel.epoll.EpollEventLoopGroup
+import io.netty.channel.kqueue.KQueue
+import io.netty.channel.kqueue.KQueueDomainSocketChannel
+import io.netty.channel.kqueue.KQueueEventLoopGroup
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
+import io.netty.channel.unix.DomainSocketChannel
 import io.netty.handler.codec.ByteToMessageDecoder
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder
 import io.netty.handler.codec.LengthFieldPrepender
@@ -55,11 +62,13 @@ import io.netty.handler.timeout.IdleState
 import io.netty.handler.timeout.IdleStateEvent
 import io.netty.handler.timeout.IdleStateHandler
 import io.netty.util.concurrent.DefaultThreadFactory
+import io.netty.util.internal.PlatformDependent
 import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TIOStreamTransport
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
+import java.net.InetSocketAddress
 import java.net.SocketException
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
@@ -123,11 +132,28 @@ internal class RawIPCClient<T : Any>(
     private val sendTime = metric.histogram("ipc-client-send-time")
 
     init {
-        bootstrap = Bootstrap().apply {
-            channel(NioSocketChannel::class.java)
-                .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
-                .applyChannelConfig(config.channel)
-                .handler(ChildChannelHandler())
+        bootstrap = if (config.endpoint is InetSocketAddress) {
+            Bootstrap().apply {
+                channel(NioSocketChannel::class.java)
+                    .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+                    .applyChannelConfig(config.channel)
+                    .handler(ChildChannelHandler())
+            }
+        } else {
+            if (Epoll.isAvailable()) {
+                Bootstrap().apply {
+                    channel(EpollDomainSocketChannel::class.java)
+                        .group(EpollEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+
+                }
+            } else if (KQueue.isAvailable()) {
+                Bootstrap().apply {
+                    channel(KQueueDomainSocketChannel::class.java)
+                        .group(KQueueEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+                }
+            } else {
+                throw UnsupportedOperationException()
+            }.applyChannelConfig(config.channel).handler(ChildChannelHandler())
         }
         closed.set(false)
         currentId = 0L
@@ -431,8 +457,8 @@ internal class RawIPCClient<T : Any>(
         }
     }
 
-    inner class ChildChannelHandler : ChannelInitializer<SocketChannel>() {
-        override fun initChannel(channel: SocketChannel) {
+    inner class ChildChannelHandler : ChannelInitializer<Channel>() {
+        override fun initChannel(channel: Channel) {
             channel.pipeline().apply {
                 addLast(LengthFieldBasedFrameDecoder(config.maxResponsePacketSize, 0, 4, 0, 4))
                 addLast(LengthFieldPrepender(4, 0))
