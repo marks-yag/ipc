@@ -102,7 +102,7 @@ internal class RawIPCClient<T : Any>(
 
     private val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
 
-    private val callbacks = ConcurrentSkipListMap<Long, Callback>()
+    private val onTheFly = ConcurrentSkipListMap<Long, CallOnTheFly>()
 
     private var lastContact: Long = 0L
 
@@ -171,11 +171,11 @@ internal class RawIPCClient<T : Any>(
 
         //TODO try schedule with delay for each call.
         channel.eventLoop().scheduleAtFixedRate({
-            val iterator = callbacks.iterator()
+            val iterator = onTheFly.iterator()
             val now = System.currentTimeMillis()
             while (iterator.hasNext()) {
                 val next = iterator.next()
-                if (now - next.value.lastContactTimestamp > config.requestTimeoutMs) {
+                if (now - next.value.callback.lastContactTimestamp > config.requestTimeoutMs) {
                     LOG.debug(
                         "Handle timeout request, connectionId: {}, requestId: {}.",
                         connection.connectionId,
@@ -184,7 +184,7 @@ internal class RawIPCClient<T : Any>(
                     iterator.remove()
                     parallelCalls.release()
                     try {
-                        next.value.func(
+                        next.value.doResponse(
                             status(next.key, StatusCode.TIMEOUT)
                         )
                     } catch (e: Exception) {
@@ -234,7 +234,6 @@ internal class RawIPCClient<T : Any>(
 
                                 list.forEach { packet ->
                                     channel.write(packet).addListener {
-                                        packet.body.release()
                                         sendTime.update(System.currentTimeMillis() - start)
                                         parallelRequestContentSize.release(packet.header.thrift.contentLength)
                                         if (LOG.isTraceEnabled) {
@@ -273,10 +272,12 @@ internal class RawIPCClient<T : Any>(
                 })
 
                 val timestamp = System.currentTimeMillis()
-                callbacks[header.callId] = Callback(timestamp, callback)
+                val requestWithTime = RequestWithTime(request, timestamp)
+                onTheFly[header.callId] = CallOnTheFly(requestWithTime, Callback(timestamp, callback))
 
                 parallelRequestContentSize.acquire(header.contentLength)
-                queue.offer(RequestWithTime(request, timestamp), Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+
+                queue.offer(requestWithTime, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
                 LOG.trace("Queued request: {}.", header.callId)
             }
         }
@@ -313,10 +314,10 @@ internal class RawIPCClient<T : Any>(
 
     private fun handlePendingRequests() {
         cbLock.withLock {
-            callbacks.keys.forEach { key ->
-                callbacks.remove(key)?.let { cb ->
+            onTheFly.keys.forEach { key ->
+                onTheFly.remove(key)?.let { cb ->
                     parallelCalls.release()
-                    cb.func(status(key, StatusCode.TIMEOUT))
+                    cb.doResponse(status(key, StatusCode.TIMEOUT))
                 }
             }
         }
@@ -380,19 +381,20 @@ internal class RawIPCClient<T : Any>(
 
         private fun doCallback(packet: Packet<ResponseHeader>) {
             val header = packet.header
-            callbacks[header.thrift.callId]?.let {
+            onTheFly[header.thrift.callId]?.let {
                 if (header.thrift.statusCode != StatusCode.PARTIAL_CONTENT) {
-                    callbacks.remove(header.thrift.callId)
+                    it.request.request.body.release()
+                    onTheFly.remove(header.thrift.callId)
                     parallelCalls.release()
                 } else {
-                    it.lastContactTimestamp = System.currentTimeMillis()
+                    it.callback.lastContactTimestamp = System.currentTimeMillis()
                     LOG.trace(
                         "Continue, connectionId: {}, requestId: {}.",
                         connection.connectionId,
                         header.thrift.callId
                     )
                 }
-                it.func(packet)
+                it.callback.func(packet)
                 packet.body.release()
             }
         }

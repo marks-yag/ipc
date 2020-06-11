@@ -61,6 +61,7 @@ class IPCTest {
         requestData.release()
         assertEquals(1, responseData.refCnt())
         responseData.release()
+        System.gc()
     }
 
     @Test
