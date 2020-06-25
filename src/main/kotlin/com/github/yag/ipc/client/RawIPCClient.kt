@@ -258,9 +258,11 @@ internal class RawIPCClient<T : Any>(
         }.apply { start() }
     }
 
-    fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
+    fun send(type: RequestType<T>, body: RequestBody, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
-            val header = RequestHeader(++currentId, type.toString(), buf.readableBytes())
+            val name = type.getName()
+            val buf = body.getBody()
+            val header = RequestHeader(++currentId, name.toString(), buf.readableBytes())
             val request = Packet(RequestPacketHeader(header), buf.retain())
 
             if (!connected.get()) {
