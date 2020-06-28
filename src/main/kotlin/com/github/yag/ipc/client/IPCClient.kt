@@ -58,9 +58,15 @@ class IPCClient<T : Any>(
                     LOG.warn("Connection broken.")
                     client.close()
 
+                    val uncompleted = client.getUncompletedRequests()
+
                     Thread.sleep(config.connectBackOff.baseIntervalMs)
                     client = retry.call {
                         RawIPCClient(config, promptHandler, metric, id)
+                    }
+
+                    for (request in uncompleted) {
+                        //client.send(request.request.type, request.request)
                     }
                 } catch (e: InterruptedException) {
                 }
@@ -86,7 +92,7 @@ class IPCClient<T : Any>(
      * @param data request body
      * @param callback code block to handle response packet
      */
-    fun send(type: RequestType<T>, body: RequestBody, callback: (Packet<ResponseHeader>) -> Any?) {
+    fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
         client.send(type, body, callback)
     }
 
@@ -96,11 +102,11 @@ class IPCClient<T : Any>(
      * @param data request body
      * @return Future object of response packet
      */
-    fun send(type: RequestType<T>, body: RequestBody): Future<Packet<ResponseHeader>> {
+    fun send(type: RequestType<T>, body: Body): Future<Packet<ResponseHeader>> {
         val future = CompletableFuture<Packet<ResponseHeader>>()
         send(type, body) {
             future.complete(it.also {
-                it.body.retain()
+                it.body.getBody().retain()
             })
         }
         return future
@@ -112,7 +118,7 @@ class IPCClient<T : Any>(
      * @param data request body
      * @return response packet
      */
-    fun sendSync(type: RequestType<T>, body: RequestBody): Packet<ResponseHeader> {
+    fun sendSync(type: RequestType<T>, body: Body): Packet<ResponseHeader> {
         return send(type, body).get()
     }
 

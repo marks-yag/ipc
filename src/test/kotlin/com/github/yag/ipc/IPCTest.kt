@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc
 
-import com.github.yag.ipc.client.PlainRequestBody
+import com.github.yag.ipc.client.PlainBody
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.client
@@ -37,6 +37,7 @@ import kotlin.random.Random
 import kotlin.system.measureTimeMillis
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -99,7 +100,7 @@ class IPCTest {
                     headers["token"] = "foo"
                 }
             }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), PlainRequestBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(requestData)).let {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
                     assertFailsWith(UnsupportedOperationException::class) {
                         it.body()
@@ -135,7 +136,7 @@ class IPCTest {
                     endpoint = server.endpoint
                 }
             }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), PlainRequestBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(requestData)).let {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
                     assertFailsWith(UnsupportedOperationException::class) {
                         it.body()
@@ -165,11 +166,11 @@ class IPCTest {
     }
 
     private fun doTest(client: IPCClient<String>) {
-        client.sendSync(NonIdempotentRequest("foo"), PlainRequestBody(requestData)).let {
+        client.sendSync(NonIdempotentRequest("foo"), PlainBody(requestData)).let {
             assertEquals(StatusCode.OK, it.status())
             it.body().release()
         }
-        client.sendSync(NonIdempotentRequest("non-exist"), PlainRequestBody(requestData)).let {
+        client.sendSync(NonIdempotentRequest("non-exist"), PlainBody(requestData)).let {
             assertEquals(StatusCode.NOT_FOUND, it.status())
             assertFailsWith(UnsupportedOperationException::class) {
                 it.body()
@@ -192,7 +193,7 @@ class IPCTest {
                 }
             }.use { client ->
                 assertEquals(1, requestData.refCnt())
-                client.sendSync(NonIdempotentRequest("any"), PlainRequestBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).let {
                     assertEquals(StatusCode.OK, it.status())
                     val body = it.body()
                     assertEquals(1, body.refCnt())
@@ -222,7 +223,7 @@ class IPCTest {
                 }
             }.use { client ->
                 val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
-                client.send(NonIdempotentRequest("foo"), PlainRequestBody(requestData)) {
+                client.send(NonIdempotentRequest("foo"), PlainBody(requestData)) {
                     queue.add(it)
                 }
 
@@ -258,13 +259,13 @@ class IPCTest {
                     endpoint = server.endpoint
                 }
             }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), PlainRequestBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(requestData)).let {
                     assertEquals(StatusCode.INTERNAL_ERROR, it.status())
                     assertFailsWith(RemoteException::class) {
                         it.body()
                     }
                 }
-                client.sendSync(NonIdempotentRequest("foo"), PlainRequestBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(requestData)).let {
                     assertEquals(StatusCode.INTERNAL_ERROR, it.status())
                     assertFailsWith(RemoteException::class) {
                         it.body()
@@ -295,7 +296,7 @@ class IPCTest {
             }.use { client ->
                 val latch = CountDownLatch(10000)
                 repeat(10000) {
-                    client.send(NonIdempotentRequest("foo"), PlainRequestBody(requestData)) {
+                    client.send(NonIdempotentRequest("foo"), PlainBody(requestData)) {
                         latch.countDown()
                     }
                 }
@@ -332,11 +333,11 @@ class IPCTest {
         }.use { client ->
             assertTrue(client.isConnected())
 
-            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainRequestBody(requestData))
+            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody(requestData))
             server.close()
 
             val result = resultFuture.get(3, TimeUnit.SECONDS)
-            assertEquals(StatusCode.TIMEOUT, result.status())
+            assertEquals(StatusCode.TIMEOUT, result.use { it.status() })
 
             assertFalse(client.isConnected())
         }
@@ -410,12 +411,12 @@ class IPCTest {
                 }
             }.use { client ->
                 repeat(10) {
-                    assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainRequestBody(requestData)).status())
+                    assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
                     Thread.sleep(200)
                 }
 
                 Thread.sleep(3000)
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainRequestBody(requestData)).status())
+                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
             }
         }
     }
@@ -446,19 +447,19 @@ class IPCTest {
                     assertFalse(client.isConnected())
                 }
 
-                assertEquals(StatusCode.CONNECTION_ERROR, client.sendSync(NonIdempotentRequest("any"), PlainRequestBody(requestData)).status())
+                assertEquals(StatusCode.CONNECTION_ERROR, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
                 assertEquals(1, requestData.refCnt())
 
                 eventually(5000) {
                     assertTrue(client.isConnected())
                 }
 
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainRequestBody(requestData)).status())
+                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
                 assertEquals(1, requestData.refCnt())
 
                 Thread.sleep(5000)
 
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainRequestBody(requestData)).status())
+                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
                 assertEquals(1, requestData.refCnt())
             }
         }
@@ -518,7 +519,7 @@ class IPCTest {
         server<String> {
             request {
                 map("add") {
-                    val data = it.body
+                    val data = it.body.getBody()
                     val lhs = data.readLong()
                     val rhs = data.readLong()
                     val result = Unpooled.buffer(8, 8)
@@ -552,8 +553,8 @@ class IPCTest {
                         val request = Unpooled.buffer(16)
                         request.writeLong(lhs)
                         request.writeLong(rhs)
-                        val result = clients[it].sendSync(NonIdempotentRequest("add"), PlainRequestBody(request))
-                        val sum = result.body.use {
+                        val result = clients[it].sendSync(NonIdempotentRequest("add"), PlainBody(request))
+                        val sum = result.body.getBody().use {
                             it.readLong()
                         }
 

@@ -19,8 +19,14 @@ package com.github.yag.ipc.client
 
 import io.netty.buffer.ByteBuf
 
-interface RequestBody {
+class PlainBody(private val body: ByteBuf) : Body, AutoCloseable {
 
-    fun getBody() : ByteBuf
+    override fun getBody(): ByteBuf {
+        return body
+    }
+
+    override fun close() {
+        body.release()
+    }
 
 }

@@ -22,6 +22,7 @@ import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.ResponsePacketHeader
 import com.github.yag.ipc.StatusCode
+import com.github.yag.ipc.client.PlainBody
 import io.netty.buffer.Unpooled
 import java.util.concurrent.ConcurrentHashMap
 
@@ -72,17 +73,18 @@ class RootRequestHandler<T : Any> : RequestHandler, AutoCloseable {
                                 StatusCode.INTERNAL_ERROR,
                                 0
                             )
-                        ), Unpooled.EMPTY_BUFFER
+                        ), PlainBody(Unpooled.EMPTY_BUFFER)
                     )
                 )
             } finally {
-                request.body.release()
+                request.close()
             }
         } else {
+            request.close()
             echo(
                 Packet(
                     ResponsePacketHeader(ResponseHeader(request.header.thrift.callId, StatusCode.NOT_FOUND, 0)),
-                    Unpooled.EMPTY_BUFFER
+                    PlainBody(Unpooled.EMPTY_BUFFER)
                 )
             )
         }

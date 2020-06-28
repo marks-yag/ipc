@@ -34,9 +34,9 @@ fun Packet<ResponseHeader>.isSuccessful(): Boolean = status().isSuccessful()
 fun Packet<ResponseHeader>.body(): ByteBuf {
     val status = status()
     return if (status.isSuccessful()) {
-        body
+        body.getBody()
     } else {
-        val bodyArray = body.use {
+        val bodyArray = body.getBody().use {
             it.readArray()
         }
         when (status) {

@@ -232,12 +232,12 @@ class IPCServer internal constructor(
 
                 if (ctx.channel().eventLoop().inEventLoop()) {
                     ctx.write(it, ctx.voidPromise())
-                    it.body.release()
+                    it.close()
                 } else {
                     try {
                         ctx.channel().eventLoop().execute {
                             ctx.write(it, ctx.voidPromise())
-                            it.body.release()
+                            it.close()
                         }
                     } catch (e: RejectedExecutionException) {
                         LOG.info("Ignored pending response: {}.", it.header.thrift.callId)

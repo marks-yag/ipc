@@ -22,7 +22,7 @@ import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.NonIdempotentRequest
-import com.github.yag.ipc.client.PlainRequestBody
+import com.github.yag.ipc.client.PlainBody
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.isSuccessful
 import java.util.concurrent.CountDownLatch
@@ -54,7 +54,7 @@ object IPCBenchClient {
                 }.use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
-                        client.send(NonIdempotentRequest(CallType.values().random()), PlainRequestBody(buf)) {
+                        client.send(NonIdempotentRequest(CallType.values().random()), PlainBody(buf)) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
