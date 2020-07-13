@@ -268,23 +268,33 @@ internal class RawIPCClient<T : Any>(
             buf.retain()
             val request = Packet(RequestPacketHeader(header), body)
 
-            if (!connected.get()) {
-                request.close()
-                callback(request.status(StatusCode.CONNECTION_ERROR))
-            } else {
-                blockTime.update(measureTimeMillis {
-                    parallelCalls.acquire()
-                })
+            send(type, request, callback)
+        }
+    }
 
-                val timestamp = System.currentTimeMillis()
-                val requestWithTime = RequestWithTime(type, request, timestamp)
-                onTheFly[header.callId] = CallOnTheFly(requestWithTime, Callback(timestamp, callback))
+    internal fun send(
+        type: RequestType<T>,
+        request: Packet<RequestHeader>,
+        callback: (Packet<ResponseHeader>) -> Any?
+    ) {
+        if (!connected.get()) {
+            request.close()
+            callback(request.status(StatusCode.CONNECTION_ERROR))
+        } else {
+            blockTime.update(measureTimeMillis {
+                parallelCalls.acquire()
+            })
 
-                parallelRequestContentSize.acquire(header.contentLength)
+            val timestamp = System.currentTimeMillis()
+            val requestWithTime = RequestWithTime(type, request, timestamp)
+            val header = request.header.thrift
+            val callId = header.callId
+            onTheFly[callId] = CallOnTheFly(requestWithTime, Callback(timestamp, callback))
 
-                queue.offer(requestWithTime, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-                LOG.trace("Queued request: {}.", header.callId)
-            }
+            parallelRequestContentSize.acquire(header.contentLength)
+
+            queue.offer(requestWithTime, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+            LOG.trace("Queued request: {}.", callId)
         }
     }
 

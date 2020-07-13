@@ -66,7 +66,7 @@ class IPCClient<T : Any>(
                     }
 
                     for (request in uncompleted) {
-                        //client.send(request.request.type, request.request)
+                        client.send(request.request.type, request.request.request, request.callback.func)
                     }
                 } catch (e: InterruptedException) {
                 }
