@@ -19,6 +19,7 @@ package com.github.yag.ipc
 
 import com.github.yag.ipc.client.PlainBody
 import com.github.yag.ipc.client.IPCClient
+import com.github.yag.ipc.client.IdempotentRequest
 import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
@@ -37,7 +38,6 @@ import kotlin.random.Random
 import kotlin.system.measureTimeMillis
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -426,12 +426,21 @@ class IPCTest {
      */
     @Test
     fun testClientReconnect() {
+        var ignore = true
         server<String> {
+            request {
+                set("foo") { _, request, echo ->
+                    if (!ignore) {
+                        echo(request.ok())
+                    }
+                }
+            }
         }.use { server ->
             server.ignoreHeartbeat = true
             thread {
                 Thread.sleep(2000)
                 server.ignoreHeartbeat = false
+                ignore = false
             }
 
             client<String> {
@@ -443,24 +452,24 @@ class IPCTest {
                     requestTimeoutMs = 2000
                 }
             }.use { client ->
+                val idempotentRequest = client.send(IdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
+                val nonIdempotentRequest = client.send(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
+
                 eventually(2000) {
                     assertFalse(client.isConnected())
                 }
 
+                assertEquals(StatusCode.TIMEOUT, nonIdempotentRequest.get().status())
+
                 assertEquals(StatusCode.CONNECTION_ERROR, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
-                assertEquals(1, requestData.refCnt())
 
                 eventually(5000) {
                     assertTrue(client.isConnected())
                 }
 
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
-                assertEquals(1, requestData.refCnt())
+                assertEquals(StatusCode.OK, idempotentRequest.get().status())
 
-                Thread.sleep(5000)
-
-                assertEquals(StatusCode.NOT_FOUND, client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use { it.status() })
-                assertEquals(1, requestData.refCnt())
+                assertEquals(StatusCode.OK, client.sendSync(NonIdempotentRequest("foo"), PlainBody(requestData)).use { it.status() })
             }
         }
     }

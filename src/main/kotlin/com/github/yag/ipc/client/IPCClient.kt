@@ -62,11 +62,11 @@ class IPCClient<T : Any>(
 
                     Thread.sleep(config.connectBackOff.baseIntervalMs)
                     client = retry.call {
-                        RawIPCClient(config, promptHandler, metric, id)
-                    }
-
-                    for (request in uncompleted) {
-                        client.send(request.request.type, request.request.request, request.callback.func)
+                        RawIPCClient<T>(config, promptHandler, metric, id)
+                    }.also {
+                        for (request in uncompleted) {
+                            it.send(request.request.type, request.request.request, request.callback.func)
+                        }
                     }
                 } catch (e: InterruptedException) {
                 }

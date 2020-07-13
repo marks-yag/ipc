@@ -380,7 +380,7 @@ internal class RawIPCClient<T : Any>(
                 if (!packet.isHeartbeat()) {
                     out.add(packet)
                 } else {
-                    LOG.debug("Received heartbeat ack. {}", buf.refCnt())
+                    LOG.debug("Received heartbeat ack.")
                     lastContact = System.currentTimeMillis()
                     buf.release()
                 }
