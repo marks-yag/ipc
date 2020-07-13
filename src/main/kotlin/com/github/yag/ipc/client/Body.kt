@@ -15,16 +15,12 @@
  * under the License.
  */
 
-package com.github.yag.ipc
+package com.github.yag.ipc.client
 
-import com.github.yag.ipc.client.PlainBody
 import io.netty.buffer.ByteBuf
-import org.apache.thrift.TSerializable
 
-open class PacketHeader<T : TSerializable>(val thrift: T, val length: (T) -> Int, val isHeartbeat: (T) -> Boolean) {
+interface Body {
 
-    fun packet(body: ByteBuf): Packet<T> {
-        return Packet(this, PlainBody(body))
-    }
+    fun getBody() : ByteBuf
 
 }

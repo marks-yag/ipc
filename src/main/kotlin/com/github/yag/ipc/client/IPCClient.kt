@@ -25,7 +25,6 @@ import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.daemon
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry
-import io.netty.buffer.ByteBuf
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.concurrent.CompletableFuture
@@ -59,9 +58,15 @@ class IPCClient<T : Any>(
                     LOG.warn("Connection broken.")
                     client.close()
 
+                    val uncompleted = client.getUncompletedRequests()
+
                     Thread.sleep(config.connectBackOff.baseIntervalMs)
                     client = retry.call {
-                        RawIPCClient(config, promptHandler, metric, id)
+                        RawIPCClient<T>(config, promptHandler, metric, id)
+                    }.also {
+                        for (request in uncompleted) {
+                            it.send(request.request.type, request.request.request, request.callback.func)
+                        }
                     }
                 } catch (e: InterruptedException) {
                 }
@@ -87,8 +92,8 @@ class IPCClient<T : Any>(
      * @param data request body
      * @param callback code block to handle response packet
      */
-    fun send(type: T, data: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
-        client.send(type, data, callback)
+    fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
+        client.send(type, body, callback)
     }
 
     /**
@@ -97,11 +102,11 @@ class IPCClient<T : Any>(
      * @param data request body
      * @return Future object of response packet
      */
-    fun send(type: T, data: ByteBuf): Future<Packet<ResponseHeader>> {
+    fun send(type: RequestType<T>, body: Body): Future<Packet<ResponseHeader>> {
         val future = CompletableFuture<Packet<ResponseHeader>>()
-        send(type, data) {
+        send(type, body) {
             future.complete(it.also {
-                it.body.retain()
+                it.body.getBody().retain()
             })
         }
         return future
@@ -113,8 +118,8 @@ class IPCClient<T : Any>(
      * @param data request body
      * @return response packet
      */
-    fun sendSync(type: T, data: ByteBuf): Packet<ResponseHeader> {
-        return send(type, data).get()
+    fun sendSync(type: RequestType<T>, body: Body): Packet<ResponseHeader> {
+        return send(type, body).get()
     }
 
     /**

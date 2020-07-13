@@ -17,6 +17,7 @@
 
 package com.github.yag.ipc
 
+import com.github.yag.ipc.client.PlainBody
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
@@ -35,5 +36,5 @@ fun Packet<RequestHeader>.status(code: StatusCode, data: ByteBuf = Unpooled.EMPT
 }
 
 fun status(callId: Long, code: StatusCode, data: ByteBuf = Unpooled.EMPTY_BUFFER): Packet<ResponseHeader> {
-    return Packet(ResponsePacketHeader(ResponseHeader(callId, code, data.readableBytes())), data)
+    return Packet(ResponsePacketHeader(ResponseHeader(callId, code, data.readableBytes())), PlainBody(data))
 }

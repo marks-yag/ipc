@@ -36,9 +36,9 @@ object PacketCodec {
         )
         packet.header.thrift.write(protocol)
 
-        check(packet.header.length.invoke(packet.header.thrift) == packet.body.readableBytes())
+        check(packet.header.length.invoke(packet.header.thrift) == packet.body.getBody().readableBytes())
 
-        return Unpooled.wrappedBuffer(buf, packet.body.retain())
+        return Unpooled.wrappedBuffer(buf, packet.body.getBody().retain())
     }
 
     fun <T : TSerializable> decode(buf: ByteBuf, header: PacketHeader<T>): Packet<T> {

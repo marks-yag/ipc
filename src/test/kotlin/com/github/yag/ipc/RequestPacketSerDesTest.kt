@@ -17,6 +17,7 @@
 
 package com.github.yag.ipc
 
+import com.github.yag.ipc.client.PlainBody
 import io.netty.buffer.ByteBufAllocator
 import io.netty.buffer.Unpooled
 import kotlin.test.Test
@@ -28,7 +29,7 @@ class RequestPacketSerDesTest {
     fun test() {
         val data = Unpooled.wrappedBuffer("hello".toByteArray())
 
-        val packet = Packet(RequestPacketHeader(RequestHeader(1, "foo", data.readableBytes())), data)
+        val packet = Packet(RequestPacketHeader(RequestHeader(1, "foo", data.readableBytes())), PlainBody(data))
 
         val buf = PacketCodec.encode(packet, ByteBufAllocator.DEFAULT)
 

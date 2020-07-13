@@ -15,16 +15,16 @@
  * under the License.
  */
 
-package com.github.yag.ipc
+package com.github.yag.ipc.client
 
-import com.github.yag.ipc.client.PlainBody
-import io.netty.buffer.ByteBuf
-import org.apache.thrift.TSerializable
+class NonIdempotentRequest<T>(private val name: T) : RequestType<T> {
 
-open class PacketHeader<T : TSerializable>(val thrift: T, val length: (T) -> Int, val isHeartbeat: (T) -> Boolean) {
+    override fun getName(): T {
+        return name
+    }
 
-    fun packet(body: ByteBuf): Packet<T> {
-        return Packet(this, PlainBody(body))
+    override fun isIdempotent(): Boolean {
+        return false
     }
 
 }

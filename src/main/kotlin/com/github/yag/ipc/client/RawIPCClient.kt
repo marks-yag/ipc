@@ -94,7 +94,7 @@ internal class RawIPCClient<T : Any>(
 
     private var currentId = 0L
 
-    private val queue = LinkedBlockingQueue<RequestWithTime>()
+    private val queue = LinkedBlockingQueue<RequestWithTime<T>>()
 
     private val flusher: Daemon<*>
 
@@ -102,7 +102,9 @@ internal class RawIPCClient<T : Any>(
 
     private val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
 
-    private val callbacks = ConcurrentSkipListMap<Long, Callback>()
+    private val onTheFly = ConcurrentSkipListMap<Long, CallOnTheFly<T>>()
+
+    private val uncompleted = ArrayList<CallOnTheFly<T>>()
 
     private var lastContact: Long = 0L
 
@@ -171,11 +173,11 @@ internal class RawIPCClient<T : Any>(
 
         //TODO try schedule with delay for each call.
         channel.eventLoop().scheduleAtFixedRate({
-            val iterator = callbacks.iterator()
+            val iterator = onTheFly.iterator()
             val now = System.currentTimeMillis()
             while (iterator.hasNext()) {
                 val next = iterator.next()
-                if (now - next.value.lastContactTimestamp > config.requestTimeoutMs) {
+                if (now - next.value.callback.lastContactTimestamp > config.requestTimeoutMs) {
                     LOG.debug(
                         "Handle timeout request, connectionId: {}, requestId: {}.",
                         connection.connectionId,
@@ -184,7 +186,7 @@ internal class RawIPCClient<T : Any>(
                     iterator.remove()
                     parallelCalls.release()
                     try {
-                        next.value.func(
+                        next.value.doResponse(
                             status(next.key, StatusCode.TIMEOUT)
                         )
                     } catch (e: Exception) {
@@ -212,14 +214,14 @@ internal class RawIPCClient<T : Any>(
                             val qt = measureTimeMillis {
                                 var request = requestWithTime.request
                                 list.add(request)
-                                length += request.body.readableBytes()
+                                length += request.body.getBody().readableBytes()
 
                                 while (true) {
                                     requestWithTime = queue.poll()
                                     if (requestWithTime != null) {
                                         request = requestWithTime.request
                                         list.add(request)
-                                        length += request.body.readableBytes()
+                                        length += request.body.getBody().readableBytes()
                                         if (length >= config.maxWriteBatchSize) {
                                             break
                                         }
@@ -234,7 +236,6 @@ internal class RawIPCClient<T : Any>(
 
                                 list.forEach { packet ->
                                     channel.write(packet).addListener {
-                                        packet.body.release()
                                         sendTime.update(System.currentTimeMillis() - start)
                                         parallelRequestContentSize.release(packet.header.thrift.contentLength)
                                         if (LOG.isTraceEnabled) {
@@ -259,26 +260,41 @@ internal class RawIPCClient<T : Any>(
         }.apply { start() }
     }
 
-    fun send(type: T, buf: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
+    fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
-            val header = RequestHeader(++currentId, type.toString(), buf.readableBytes())
-            val request = Packet(RequestPacketHeader(header), buf.retain())
+            val name = type.getName()
+            val buf = body.getBody()
+            val header = RequestHeader(++currentId, name.toString(), buf.readableBytes())
+            buf.retain()
+            val request = Packet(RequestPacketHeader(header), body)
 
-            if (!connected.get()) {
-                request.body.release()
-                callback(request.status(StatusCode.CONNECTION_ERROR))
-            } else {
-                blockTime.update(measureTimeMillis {
-                    parallelCalls.acquire()
-                })
+            send(type, request, callback)
+        }
+    }
 
-                val timestamp = System.currentTimeMillis()
-                callbacks[header.callId] = Callback(timestamp, callback)
+    internal fun send(
+        type: RequestType<T>,
+        request: Packet<RequestHeader>,
+        callback: (Packet<ResponseHeader>) -> Any?
+    ) {
+        if (!connected.get()) {
+            request.close()
+            callback(request.status(StatusCode.CONNECTION_ERROR))
+        } else {
+            blockTime.update(measureTimeMillis {
+                parallelCalls.acquire()
+            })
 
-                parallelRequestContentSize.acquire(header.contentLength)
-                queue.offer(RequestWithTime(request, timestamp), Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-                LOG.trace("Queued request: {}.", header.callId)
-            }
+            val timestamp = System.currentTimeMillis()
+            val requestWithTime = RequestWithTime(type, request, timestamp)
+            val header = request.header.thrift
+            val callId = header.callId
+            onTheFly[callId] = CallOnTheFly(requestWithTime, Callback(timestamp, callback))
+
+            parallelRequestContentSize.acquire(header.contentLength)
+
+            queue.offer(requestWithTime, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+            LOG.trace("Queued request: {}.", callId)
         }
     }
 
@@ -305,7 +321,7 @@ internal class RawIPCClient<T : Any>(
                 LOG.info("IPC client closed, make all pending requests timeout.")
                 handlePendingRequests()
                 queue.forEach {
-                    it.request.body.release()
+                    it.request.close()
                 }
             }
         }
@@ -313,13 +329,22 @@ internal class RawIPCClient<T : Any>(
 
     private fun handlePendingRequests() {
         cbLock.withLock {
-            callbacks.keys.forEach { key ->
-                callbacks.remove(key)?.let { cb ->
+            onTheFly.keys.forEach { key ->
+                onTheFly.remove(key)?.let { call ->
                     parallelCalls.release()
-                    cb.func(status(key, StatusCode.TIMEOUT))
+
+                    if (call.request.type.isIdempotent()) {
+                        uncompleted.add(call)
+                    } else {
+                        call.doResponse(status(key, StatusCode.TIMEOUT))
+                    }
                 }
             }
         }
+    }
+
+    internal fun getUncompletedRequests() : List<CallOnTheFly<T>> {
+        return uncompleted
     }
 
     fun isConnected(): Boolean {
@@ -380,21 +405,22 @@ internal class RawIPCClient<T : Any>(
 
         private fun doCallback(packet: Packet<ResponseHeader>) {
             val header = packet.header
-            callbacks[header.thrift.callId]?.let {
+            onTheFly[header.thrift.callId]?.let {
                 if (header.thrift.statusCode != StatusCode.PARTIAL_CONTENT) {
-                    callbacks.remove(header.thrift.callId)
+                    it.request.request.close()
+                    onTheFly.remove(header.thrift.callId)
                     parallelCalls.release()
                 } else {
-                    it.lastContactTimestamp = System.currentTimeMillis()
+                    it.callback.lastContactTimestamp = System.currentTimeMillis()
                     LOG.trace(
                         "Continue, connectionId: {}, requestId: {}.",
                         connection.connectionId,
                         header.thrift.callId
                     )
                 }
-                it.func(packet)
-                packet.body.release()
+                it.callback.func(packet)
             }
+            packet.close()
         }
 
         override fun channelInactive(ctx: ChannelHandlerContext) {

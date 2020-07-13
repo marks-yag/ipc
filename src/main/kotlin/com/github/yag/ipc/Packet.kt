@@ -17,21 +17,22 @@
 
 package com.github.yag.ipc
 
-import io.netty.buffer.ByteBuf
+import com.github.yag.ipc.client.PlainBody
+import com.github.yag.ipc.client.Body
 import io.netty.buffer.Unpooled
 import org.apache.thrift.TSerializable
 
-class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: ByteBuf) : AutoCloseable {
+class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: Body) : AutoCloseable {
 
     internal fun isHeartbeat() = header.isHeartbeat(header.thrift)
 
     override fun close() {
-        body.release()
+        body.getBody().release()
     }
 
     companion object {
 
-        internal val requestHeartbeat = Packet(RequestPacketHeader(RequestHeader(-1, "", 0)), Unpooled.EMPTY_BUFFER)
+        internal val requestHeartbeat = Packet(RequestPacketHeader(RequestHeader(-1, "", 0)), PlainBody(Unpooled.EMPTY_BUFFER))
 
         internal val responseHeartbeat = status(-1, StatusCode.OK)
 
