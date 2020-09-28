@@ -17,13 +17,26 @@
 
 package com.github.yag.ipc.client
 
+import com.github.yag.ipc.TEncoder
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufAllocator
+import io.netty.buffer.PooledByteBufAllocator
+import org.apache.thrift.TSerializable
 
-interface Body : AutoCloseable {
+class ThriftBody(private val obj: TSerializable, allocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT) : Body, AutoCloseable {
 
-    fun getBody() : ByteBuf
+    private val buf = TEncoder.encode(obj, allocator.buffer())
+
+    override fun getBody(): ByteBuf {
+        return buf
+    }
 
     override fun close() {
+        buf.release()
+    }
+
+    override fun toString(): String {
+        return obj.toString()
     }
 
 }

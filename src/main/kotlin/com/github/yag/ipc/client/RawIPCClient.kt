@@ -269,6 +269,8 @@ internal class RawIPCClient<T : Any>(
             val request = Packet(RequestPacketHeader(header), body)
 
             send(type, request, callback)
+
+            body.close()
         }
     }
 
