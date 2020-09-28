@@ -25,8 +25,11 @@ import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.daemon
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
@@ -89,7 +92,7 @@ class IPCClient<T : Any>(
     /**
      * Send request packet to server.
      * @param type call type
-     * @param data request body
+     * @param body request body
      * @param callback code block to handle response packet
      */
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
@@ -99,7 +102,37 @@ class IPCClient<T : Any>(
     /**
      * Send request packet to server.
      * @param type call type
-     * @param data request body
+     * @param data request data
+     * @param callback code block to handle response packet
+     */
+    fun send(type: RequestType<T>, data: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
+        send(type, PlainBody(data), callback)
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @param callback code block to handle response packet
+     */
+    fun send(type: RequestType<T>, data: ByteBuffer, callback: (Packet<ResponseHeader>) -> Any?) {
+        send(type, Unpooled.wrappedBuffer(data), callback)
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @param callback code block to handle response packet
+     */
+    fun send(type: RequestType<T>, data: ByteArray, callback: (Packet<ResponseHeader>) -> Any?) {
+        send(type, Unpooled.wrappedBuffer(data), callback)
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param body request body
      * @return Future object of response packet
      */
     fun send(type: RequestType<T>, body: Body): Future<Packet<ResponseHeader>> {
@@ -115,11 +148,71 @@ class IPCClient<T : Any>(
     /**
      * Send request packet to server.
      * @param type call type
+     * @param data request data
+     * @return Future object of response packet
+     */
+    fun send(type: RequestType<T>, data: ByteBuf): Future<Packet<ResponseHeader>> {
+        return send(type, PlainBody(data))
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @return Future object of response packet
+     */
+    fun send(type: RequestType<T>, data: ByteBuffer): Future<Packet<ResponseHeader>> {
+        return send(type, Unpooled.wrappedBuffer(data))
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @return Future object of response packet
+     */
+    fun send(type: RequestType<T>, data: ByteArray): Future<Packet<ResponseHeader>> {
+        return send(type, Unpooled.wrappedBuffer(data))
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
      * @param data request body
      * @return response packet
      */
     fun sendSync(type: RequestType<T>, body: Body): Packet<ResponseHeader> {
         return send(type, body).get()
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @return response packet
+     */
+    fun sendSync(type: RequestType<T>, data: ByteBuf): Packet<ResponseHeader> {
+        return send(type, PlainBody(data)).get()
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @return response packet
+     */
+    fun sendSync(type: RequestType<T>, data: ByteBuffer): Packet<ResponseHeader> {
+        return send(type, Unpooled.wrappedBuffer(data)).get()
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @return response packet
+     */
+    fun sendSync(type: RequestType<T>, data: ByteArray): Packet<ResponseHeader> {
+        return send(type, Unpooled.wrappedBuffer(data)).get()
     }
 
     /**
