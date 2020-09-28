@@ -45,7 +45,7 @@ class ThriftBodyTest {
                     assertEquals(StatusCode.OK, it.status())
                     it.body().release()
                 }
-                assertEquals(0, body.getBody().refCnt())
+                assertEquals(0, body.getData().refCnt())
             }
         }
     }

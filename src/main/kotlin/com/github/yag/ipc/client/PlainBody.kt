@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBuf
 
 class PlainBody(private val body: ByteBuf) : Body {
 
-    override fun getBody(): ByteBuf {
+    override fun getData(): ByteBuf {
         return body
     }
 

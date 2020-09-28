@@ -214,14 +214,14 @@ internal class RawIPCClient<T : Any>(
                             val qt = measureTimeMillis {
                                 var request = requestWithTime.request
                                 list.add(request)
-                                length += request.body.getBody().readableBytes()
+                                length += request.body.getData().readableBytes()
 
                                 while (true) {
                                     requestWithTime = queue.poll()
                                     if (requestWithTime != null) {
                                         request = requestWithTime.request
                                         list.add(request)
-                                        length += request.body.getBody().readableBytes()
+                                        length += request.body.getData().readableBytes()
                                         if (length >= config.maxWriteBatchSize) {
                                             break
                                         }
@@ -263,7 +263,7 @@ internal class RawIPCClient<T : Any>(
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
             val name = type.getName()
-            val buf = body.getBody()
+            val buf = body.getData()
             val header = RequestHeader(++currentId, name.toString(), buf.readableBytes())
             buf.retain()
             val request = Packet(RequestPacketHeader(header), body)

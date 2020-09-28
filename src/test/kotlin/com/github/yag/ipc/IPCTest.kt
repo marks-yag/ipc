@@ -528,7 +528,7 @@ class IPCTest {
         server<String> {
             request {
                 map("add") {
-                    val data = it.body.getBody()
+                    val data = it.body.getData()
                     val lhs = data.readLong()
                     val rhs = data.readLong()
                     val result = Unpooled.buffer(8, 8)
@@ -563,7 +563,7 @@ class IPCTest {
                         request.writeLong(lhs)
                         request.writeLong(rhs)
                         val result = clients[it].sendSync(NonIdempotentRequest("add"), PlainBody(request))
-                        val sum = result.body.getBody().use {
+                        val sum = result.body.getData().use {
                             it.readLong()
                         }
 

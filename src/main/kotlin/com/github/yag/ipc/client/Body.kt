@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBuf
 
 interface Body : AutoCloseable {
 
-    fun getBody() : ByteBuf
+    fun getData() : ByteBuf
 
     override fun close() {
     }
