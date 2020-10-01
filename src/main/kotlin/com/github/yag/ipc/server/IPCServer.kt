@@ -222,6 +222,7 @@ class IPCServer internal constructor(
 
     inner class RequestDispatcher(private val connection: Connection) : ChannelInboundHandlerAdapter() {
 
+        @Suppress("unchecked_cast")
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             super.channelRead(ctx, msg)
             val packet = msg as Packet<RequestHeader>
