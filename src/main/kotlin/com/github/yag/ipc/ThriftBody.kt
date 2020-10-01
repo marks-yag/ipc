@@ -15,9 +15,9 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc
 
-import com.github.yag.ipc.TEncoder
+import com.github.yag.ipc.client.Body
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
 import io.netty.buffer.PooledByteBufAllocator

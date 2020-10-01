@@ -17,7 +17,6 @@
 
 package com.github.yag.ipc
 
-import com.github.yag.ipc.client.PlainBody
 import io.netty.buffer.ByteBuf
 import org.apache.thrift.TSerializable
 

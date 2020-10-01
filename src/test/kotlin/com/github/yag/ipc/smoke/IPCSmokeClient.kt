@@ -22,7 +22,7 @@ import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.CallType
 import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.NonIdempotentRequest
-import com.github.yag.ipc.client.PlainBody
+import com.github.yag.ipc.PlainBody
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.isSuccessful
 import com.github.yag.retry.DefaultErrorHandler

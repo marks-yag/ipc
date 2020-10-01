@@ -17,7 +17,6 @@
 
 package com.github.yag.ipc
 
-import com.github.yag.ipc.client.PlainBody
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.IdempotentRequest
 import com.github.yag.ipc.client.NonIdempotentRequest

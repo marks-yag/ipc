@@ -15,8 +15,9 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc
 
+import com.github.yag.ipc.client.Body
 import io.netty.buffer.ByteBuf
 
 class PlainBody(private val body: ByteBuf) : Body {

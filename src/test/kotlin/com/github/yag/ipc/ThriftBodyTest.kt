@@ -18,7 +18,6 @@
 package com.github.yag.ipc
 
 import com.github.yag.ipc.client.NonIdempotentRequest
-import com.github.yag.ipc.client.ThriftBody
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import kotlin.test.Test
