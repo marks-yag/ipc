@@ -251,28 +251,27 @@ internal class RawIPCClient<T : Any>(
             packet.close()
             callback(packet.status(StatusCode.CONNECTION_ERROR))
         } else {
-            blockTime.update(measureTimeMillis {
-                parallelCalls.acquire()
-            })
-
             val timestamp = System.currentTimeMillis()
             val request = Request(type, packet, timestamp)
             val header = packet.header.thrift
             val callId = header.callId
+            val timeoutMs = packet.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
+
+            blockTime.update(measureTimeMillis {
+                parallelCalls.acquire()
+                parallelRequestContentSize.acquire(header.contentLength)
+            })
+
             onTheFly[callId] = CallOnTheFly(request, Callback(timestamp, callback))
+
+            queue.offer(request)
+            LOG.trace("Queued request: {}.", callId)
+
             channel.eventLoop().schedule({
                 timeout(callId)
-            }, getTimeoutMs(type, packet), TimeUnit.MILLISECONDS)
-
-            if (parallelRequestContentSize.tryAcquire(header.contentLength, getTimeoutMs(type, packet), TimeUnit.MILLISECONDS)) {
-                queue.offer(request, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-                LOG.trace("Queued request: {}.", callId)
-            }
+            }, timeoutMs, TimeUnit.MILLISECONDS)
         }
     }
-
-    private fun getTimeoutMs(type: RequestType<*>, request: Packet<RequestHeader>) =
-        request.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
 
     private fun timeout(callId: Long) {
         onTheFly.remove(callId)?.let {
