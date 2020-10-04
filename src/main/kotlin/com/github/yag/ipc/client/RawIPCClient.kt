@@ -262,19 +262,17 @@ internal class RawIPCClient<T : Any>(
             onTheFly[callId] = CallOnTheFly(requestWithTime, Callback(timestamp, callback))
             channel.eventLoop().schedule({
                 timeout(callId)
-            }, request.body.timeoutMs() ?: config.requestTimeoutMs, TimeUnit.MILLISECONDS)
+            }, getTimeoutMs(type, request), TimeUnit.MILLISECONDS)
 
-            if (parallelRequestContentSize.tryAcquire(
-                    header.contentLength,
-                    request.body.timeoutMs() ?: config.requestTimeoutMs,
-                    TimeUnit.MILLISECONDS
-                )
-            ) {
+            if (parallelRequestContentSize.tryAcquire(header.contentLength, getTimeoutMs(type, request), TimeUnit.MILLISECONDS)) {
                 queue.offer(requestWithTime, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
                 LOG.trace("Queued request: {}.", callId)
             }
         }
     }
+
+    private fun getTimeoutMs(type: RequestType<*>, request: Packet<RequestHeader>) =
+        request.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
 
     private fun timeout(callId: Long) {
         onTheFly.remove(callId)?.let {
