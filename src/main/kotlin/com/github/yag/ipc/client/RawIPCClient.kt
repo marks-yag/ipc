@@ -94,7 +94,7 @@ internal class RawIPCClient<T : Any>(
 
     private var currentId = 0L
 
-    private val queue = LinkedBlockingQueue<RequestWithTime<T>>()
+    private val queue = LinkedBlockingQueue<Request<T>>()
 
     private val flusher: Daemon<*>
 
@@ -244,28 +244,28 @@ internal class RawIPCClient<T : Any>(
 
     internal fun send(
         type: RequestType<T>,
-        request: Packet<RequestHeader>,
+        packet: Packet<RequestHeader>,
         callback: (Packet<ResponseHeader>) -> Any?
     ) {
         if (!connected.get()) {
-            request.close()
-            callback(request.status(StatusCode.CONNECTION_ERROR))
+            packet.close()
+            callback(packet.status(StatusCode.CONNECTION_ERROR))
         } else {
             blockTime.update(measureTimeMillis {
                 parallelCalls.acquire()
             })
 
             val timestamp = System.currentTimeMillis()
-            val requestWithTime = RequestWithTime(type, request, timestamp)
-            val header = request.header.thrift
+            val request = Request(type, packet, timestamp)
+            val header = packet.header.thrift
             val callId = header.callId
-            onTheFly[callId] = CallOnTheFly(requestWithTime, Callback(timestamp, callback))
+            onTheFly[callId] = CallOnTheFly(request, Callback(timestamp, callback))
             channel.eventLoop().schedule({
                 timeout(callId)
-            }, getTimeoutMs(type, request), TimeUnit.MILLISECONDS)
+            }, getTimeoutMs(type, packet), TimeUnit.MILLISECONDS)
 
-            if (parallelRequestContentSize.tryAcquire(header.contentLength, getTimeoutMs(type, request), TimeUnit.MILLISECONDS)) {
-                queue.offer(requestWithTime, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
+            if (parallelRequestContentSize.tryAcquire(header.contentLength, getTimeoutMs(type, packet), TimeUnit.MILLISECONDS)) {
+                queue.offer(request, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
                 LOG.trace("Queued request: {}.", callId)
             }
         }
