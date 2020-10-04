@@ -20,7 +20,11 @@ package com.github.yag.ipc
 import com.github.yag.ipc.client.Body
 import io.netty.buffer.ByteBuf
 
-class PlainBody(private val body: ByteBuf) : Body {
+class PlainBody(private val body: ByteBuf, private val timeoutMs: Long? = null) : Body {
+
+    override fun timeoutMs(): Long? {
+        return timeoutMs
+    }
 
     override fun getData(): ByteBuf {
         return body

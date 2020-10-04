@@ -68,8 +68,8 @@ class IPCClient<T : Any>(
                     client = retry.call {
                         RawIPCClient<T>(config, promptHandler, metric, id)
                     }.also {
-                        for (request in uncompleted) {
-                            it.send(request.request.type, request.request.request, request.callback.func)
+                        for (call in uncompleted) {
+                            it.send(call.request.type, call.request.packet, call.callback.func)
                         }
                     }
                 } catch (e: InterruptedException) {

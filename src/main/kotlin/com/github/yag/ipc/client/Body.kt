@@ -23,6 +23,8 @@ interface Body : AutoCloseable {
 
     fun getData() : ByteBuf
 
+    fun timeoutMs() : Long? = null
+
     override fun close() {
     }
 

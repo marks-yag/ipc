@@ -23,12 +23,16 @@ import io.netty.buffer.ByteBufAllocator
 import io.netty.buffer.PooledByteBufAllocator
 import org.apache.thrift.TSerializable
 
-class ThriftBody(private val obj: TSerializable, allocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT) : Body, AutoCloseable {
+class ThriftBody(private val obj: TSerializable, private val timeoutMs: Long? = null, allocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT) : Body, AutoCloseable {
 
     private val buf = TEncoder.encode(obj, allocator.buffer())
 
     override fun getData(): ByteBuf {
         return buf
+    }
+
+    override fun timeoutMs(): Long? {
+        return timeoutMs
     }
 
     override fun close() {

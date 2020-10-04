@@ -19,12 +19,11 @@ package com.github.yag.ipc.client
 
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.ResponseHeader
-import com.github.yag.ipc.use
 
 internal data class CallOnTheFly<T>(val request: RequestWithTime<T>, val callback: Callback) {
 
     fun doResponse(response: Packet<ResponseHeader>) {
-        request.request.use {
+        request.packet.use {
             callback.func(response)
         }
     }
