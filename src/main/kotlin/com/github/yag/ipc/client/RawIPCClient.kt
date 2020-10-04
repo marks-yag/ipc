@@ -102,9 +102,9 @@ internal class RawIPCClient<T : Any>(
 
     private val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
 
-    private val onTheFly = ConcurrentSkipListMap<Long, CallOnTheFly<T>>()
+    private val onTheFly = ConcurrentSkipListMap<Long, OnTheFly<T>>()
 
-    private val uncompleted = ArrayList<CallOnTheFly<T>>()
+    private val uncompleted = ArrayList<OnTheFly<T>>()
 
     private var lastContact: Long = 0L
 
@@ -254,19 +254,19 @@ internal class RawIPCClient<T : Any>(
             val timestamp = System.currentTimeMillis()
             val request = Request(type, packet, timestamp)
             val header = packet.header.thrift
-            val callId = header.callId
-            val timeoutMs = packet.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
 
             blockTime.update(measureTimeMillis {
                 parallelCalls.acquire()
                 parallelRequestContentSize.acquire(header.contentLength)
             })
 
-            onTheFly[callId] = CallOnTheFly(request, Callback(timestamp, callback))
+            val callId = header.callId
+            onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
 
             queue.offer(request)
             LOG.trace("Queued request: {}.", callId)
 
+            val timeoutMs = packet.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
             channel.eventLoop().schedule({
                 timeout(callId)
             }, timeoutMs, TimeUnit.MILLISECONDS)
@@ -324,7 +324,7 @@ internal class RawIPCClient<T : Any>(
         }
     }
 
-    internal fun getUncompletedRequests() : List<CallOnTheFly<T>> {
+    internal fun getUncompletedRequests() : List<OnTheFly<T>> {
         return uncompleted
     }
 

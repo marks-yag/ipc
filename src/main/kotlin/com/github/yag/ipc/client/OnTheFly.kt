@@ -20,7 +20,7 @@ package com.github.yag.ipc.client
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.ResponseHeader
 
-internal data class CallOnTheFly<T>(val request: Request<T>, val callback: Callback) {
+internal data class OnTheFly<T>(val request: Request<T>, val callback: Callback) {
 
     fun doResponse(response: Packet<ResponseHeader>) {
         request.packet.use {
