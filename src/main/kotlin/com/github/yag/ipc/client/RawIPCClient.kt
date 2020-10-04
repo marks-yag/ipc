@@ -59,6 +59,7 @@ import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TIOStreamTransport
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.io.Closeable
 import java.net.ConnectException
 import java.net.SocketException
 import java.nio.ByteBuffer
@@ -238,7 +239,7 @@ internal class RawIPCClient<T : Any>(
 
             send(type, request, callback)
 
-            body.close()
+            (body as? AutoCloseable)?.close()
         }
     }
 
@@ -264,7 +265,7 @@ internal class RawIPCClient<T : Any>(
             onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
 
             queue.offer(request)
-            LOG.trace("Queued request: {}.", callId)
+            LOG.debug("Queued: {}.", request)
 
             val timeoutMs = packet.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
             channel.eventLoop().schedule({

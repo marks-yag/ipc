@@ -27,4 +27,8 @@ class IdempotentRequest<T>(private val name: T) : RequestType<T> {
         return true
     }
 
+    override fun toString(): String {
+        return "$name/i"
+    }
+
 }

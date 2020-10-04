@@ -26,4 +26,8 @@ open class PacketHeader<T : TSerializable>(val thrift: T, val length: (T) -> Int
         return Packet(this, PlainBody(body))
     }
 
+    override fun toString(): String {
+        return thrift.toString()
+    }
+
 }

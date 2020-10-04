@@ -21,7 +21,7 @@ import com.github.yag.ipc.client.Body
 import io.netty.buffer.Unpooled
 import org.apache.thrift.TSerializable
 
-class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: Body) : AutoCloseable {
+data class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: Body) : AutoCloseable {
 
     internal fun isHeartbeat() = header.isHeartbeat(header.thrift)
 
