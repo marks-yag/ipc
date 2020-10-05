@@ -118,8 +118,6 @@ internal class RawIPCClient<T : Any>(
 
     private val blockTime = metric.histogram("ipc-client-request-block-time")
 
-    private val queueTime = metric.histogram("ipc-client-queue-time")
-
     private val batchSize = metric.histogram("ipc-client-batch-size")
 
     private val sendTime = metric.histogram("ipc-client-send-time")
@@ -175,51 +173,26 @@ internal class RawIPCClient<T : Any>(
             Runnable {
                 while (!shouldStop.get()) {
                     try {
-                        val list = ArrayList<Packet<RequestHeader>>()
-                        var length = 0L
-                        var request = queue.poll(1, TimeUnit.MILLISECONDS)
-                        if (request != null) {
-                            val qt = measureTimeMillis {
-                                var packet = request.packet
-                                list.add(packet)
-                                length += packet.body.getData().readableBytes()
+                        val list = poll()
+                        batchSize.update(list.size)
 
-                                while (true) {
-                                    request = queue.poll()
-                                    if (request != null) {
-                                        packet = request.packet
-                                        list.add(packet)
-                                        length += packet.body.getData().readableBytes()
-                                        if (length >= config.maxWriteBatchSize) {
-                                            break
-                                        }
-                                    } else {
-                                        break
-                                    }
+                        val start = System.currentTimeMillis()
+
+                        list.forEach { packet ->
+                            channel.write(packet).addListener {
+                                sendTime.update(System.currentTimeMillis() - start)
+                                parallelRequestContentSize.release(packet.header.thrift.contentLength)
+                                if (LOG.isTraceEnabled) {
+                                    LOG.trace(
+                                        "Released {} then {}.",
+                                        packet.header.thrift.contentLength,
+                                        parallelRequestContentSize.availablePermits()
+                                    )
                                 }
-
-                                batchSize.update(list.size)
-
-                                val start = System.currentTimeMillis()
-
-                                list.forEach { packet ->
-                                    channel.write(packet).addListener {
-                                        sendTime.update(System.currentTimeMillis() - start)
-                                        parallelRequestContentSize.release(packet.header.thrift.contentLength)
-                                        if (LOG.isTraceEnabled) {
-                                            LOG.trace(
-                                                "Released {} then {}.",
-                                                packet.header.thrift.contentLength,
-                                                parallelRequestContentSize.availablePermits()
-                                            )
-                                        }
-                                    }
-                                }
-
-                                channel.flush()
                             }
-                            queueTime.update(qt)
                         }
+
+                        channel.flush()
                     } catch (e: InterruptedException) {
                         //:~
                     }
@@ -227,6 +200,7 @@ internal class RawIPCClient<T : Any>(
             }
         }.apply { start() }
     }
+
 
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
@@ -277,6 +251,31 @@ internal class RawIPCClient<T : Any>(
         onTheFly.remove(callId)?.let {
             it.doResponse(status(callId, StatusCode.TIMEOUT))
         }
+    }
+
+    private fun poll(): ArrayList<Packet<RequestHeader>> {
+        val list = ArrayList<Packet<RequestHeader>>()
+        var length = 0L
+        var request = queue.take()
+
+        var packet = request.packet
+        list.add(packet)
+        length += packet.body.getData().readableBytes()
+
+        while (true) {
+            request = queue.poll()
+            if (request != null) {
+                packet = request.packet
+                list.add(packet)
+                length += packet.body.getData().readableBytes()
+                if (length >= config.maxWriteBatchSize) {
+                    break
+                }
+            } else {
+                break
+            }
+        }
+        return list
     }
 
     override fun close() {
