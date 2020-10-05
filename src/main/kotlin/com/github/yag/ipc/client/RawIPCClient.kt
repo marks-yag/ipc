@@ -59,7 +59,6 @@ import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TIOStreamTransport
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.Closeable
 import java.net.ConnectException
 import java.net.SocketException
 import java.nio.ByteBuffer
@@ -178,19 +177,19 @@ internal class RawIPCClient<T : Any>(
                     try {
                         val list = ArrayList<Packet<RequestHeader>>()
                         var length = 0L
-                        var requestWithTime = queue.poll(1, TimeUnit.MILLISECONDS)
-                        if (requestWithTime != null) {
+                        var request = queue.poll(1, TimeUnit.MILLISECONDS)
+                        if (request != null) {
                             val qt = measureTimeMillis {
-                                var request = requestWithTime.packet
-                                list.add(request)
-                                length += request.body.getData().readableBytes()
+                                var packet = request.packet
+                                list.add(packet)
+                                length += packet.body.getData().readableBytes()
 
                                 while (true) {
-                                    requestWithTime = queue.poll()
-                                    if (requestWithTime != null) {
-                                        request = requestWithTime.packet
-                                        list.add(request)
-                                        length += request.body.getData().readableBytes()
+                                    request = queue.poll()
+                                    if (request != null) {
+                                        packet = request.packet
+                                        list.add(packet)
+                                        length += packet.body.getData().readableBytes()
                                         if (length >= config.maxWriteBatchSize) {
                                             break
                                         }
