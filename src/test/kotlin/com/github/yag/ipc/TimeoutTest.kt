@@ -17,45 +17,18 @@
 
 package com.github.yag.ipc
 
-import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.RequestType
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class TimeoutTest {
 
-    @Test
-    fun testPerRequestTimeout() {
-        server<String> {
-            request {
-                set("foo") { connection, packet, function ->
-                }
-
-                map("bar") { request ->
-                    request.ok()
-                }
-            }
-        }.use { server ->
-            client<String> {
-                config {
-                    endpoint = server.endpoint
-                }
-            }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), ThriftBody(User("yag", "123"), 1000)).let {
-                    assertEquals(StatusCode.TIMEOUT, it.status())
-                }
-                client.sendSync(NonIdempotentRequest("bar"), ThriftBody(User("yag", "123"), 1000)).let {
-                    assertEquals(StatusCode.OK, it.status())
-                }
-            }
-        }
-    }
-
     enum class Operation(private val timeoutMs: Long) : RequestType<Operation> {
-        FOO(1000L),
-        BAR(2000L);
+        FOO(2000L),
+        BAR(1000L);
 
         override fun getName(): Operation {
             return this
@@ -73,23 +46,37 @@ class TimeoutTest {
                 set(Operation.FOO) { connection, packet, function ->
                 }
 
-                map(Operation.BAR) { request ->
-                    request.ok()
+                set(Operation.BAR) { connection, packet, function ->
                 }
             }
         }.use { server ->
             client<Operation> {
                 config {
                     endpoint = server.endpoint
+                    requestTimeoutMs = 100L
                 }
             }.use { client ->
-                client.sendSync(Operation.FOO, ThriftBody(User("yag", "123"))).let {
-                    assertEquals(StatusCode.TIMEOUT, it.status())
-                }
-                client.sendSync(Operation.BAR, ThriftBody(User("yag", "123"))).let {
-                    assertEquals(StatusCode.OK, it.status())
-                }
+                val start = System.currentTimeMillis()
+                val first = client.send(Operation.FOO, ThriftBody(User("yag", "123")))
+                val second = client.send(Operation.BAR, ThriftBody(User("yag", "456")))
+                val third = client.send(Operation.FOO, ThriftBody(User("yag", "456"), 500L))
+
+                val thirdResult = third.get()
+                val thirdCost = System.currentTimeMillis() - start
+                assertEquals(StatusCode.TIMEOUT, thirdResult.status())
+                assertTrue(thirdCost in 500L..600L)
+
+                val secondResult = second.get()
+                val secondCost = System.currentTimeMillis() - start
+                assertEquals(StatusCode.TIMEOUT, secondResult.status())
+                assertTrue(secondCost in 1000L..1100L)
+
+                val firstResult = first.get()
+                val firstCost = System.currentTimeMillis() - start
+                assertEquals(StatusCode.TIMEOUT, firstResult.status())
+                assertTrue(firstCost in 2000L..2100L)
             }
         }
     }
+
 }
