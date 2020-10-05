@@ -21,6 +21,8 @@ interface RequestType<T> {
 
     fun getName() : T
 
+    fun timeoutMs(): Long? = null
+
     fun isIdempotent() : Boolean = false
 
 }

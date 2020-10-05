@@ -19,11 +19,10 @@ package com.github.yag.ipc.client
 
 import io.netty.buffer.ByteBuf
 
-interface Body : AutoCloseable {
+interface Body {
 
     fun getData() : ByteBuf
 
-    override fun close() {
-    }
+    fun timeoutMs() : Long? = null
 
 }

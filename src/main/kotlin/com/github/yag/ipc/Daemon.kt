@@ -20,9 +20,9 @@ package com.github.yag.ipc
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class Daemon<T : Runnable>(
-    private val runnable: (AtomicBoolean) -> T,
-    name: String = runnable.javaClass.simpleName,
-    private val interruptable: Boolean = true
+    name: String,
+    private val interruptable: Boolean = true,
+    private val runnable: (AtomicBoolean) -> T
 ) : Thread(name), AutoCloseable {
 
     private var shouldShop = AtomicBoolean(false)
@@ -49,10 +49,10 @@ internal class Daemon<T : Runnable>(
     }
 }
 
-internal fun <T : Runnable> daemon(name: String? = null, init: (AtomicBoolean) -> T): Daemon<T> {
-    return if (name == null) {
-        Daemon({ init(it) })
-    } else {
-        Daemon({ init(it) }, name)
+internal fun <T> daemon(name: String, init: (AtomicBoolean) -> T): Daemon<Runnable> {
+    return Daemon(name, true) {
+        Runnable {
+            init(it)
+        }
     }
 }

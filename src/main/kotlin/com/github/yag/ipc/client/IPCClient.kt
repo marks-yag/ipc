@@ -23,7 +23,6 @@ import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody
 import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.ResponseHeader
-import com.github.yag.ipc.daemon
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry
 import io.netty.buffer.ByteBuf
@@ -68,8 +67,8 @@ class IPCClient<T : Any>(
                     client = retry.call {
                         RawIPCClient<T>(config, promptHandler, metric, id)
                     }.also {
-                        for (request in uncompleted) {
-                            it.send(request.request.type, request.request.request, request.callback.func)
+                        for (call in uncompleted) {
+                            it.send(call.request.type, call.request.packet, call.callback.func)
                         }
                     }
                 } catch (e: InterruptedException) {
@@ -85,7 +84,7 @@ class IPCClient<T : Any>(
         client = retry.call {
             RawIPCClient(config, promptHandler, metric, id)
         }
-        monitor = daemon("connection-monitor") {
+        monitor = Daemon("connection-monitor") {
             Monitor(it)
         }.also { it.start() }
     }

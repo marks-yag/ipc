@@ -27,4 +27,8 @@ class NonIdempotentRequest<T>(private val name: T) : RequestType<T> {
         return false
     }
 
+    override fun toString(): String {
+        return "$name/n"
+    }
+
 }

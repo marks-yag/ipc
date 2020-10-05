@@ -94,7 +94,7 @@ internal class RawIPCClient<T : Any>(
 
     private var currentId = 0L
 
-    private val queue = LinkedBlockingQueue<RequestWithTime<T>>()
+    private val queue = LinkedBlockingQueue<Request<T>>()
 
     private val flusher: Daemon<*>
 
@@ -102,9 +102,9 @@ internal class RawIPCClient<T : Any>(
 
     private val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
 
-    private val onTheFly = ConcurrentSkipListMap<Long, CallOnTheFly<T>>()
+    private val onTheFly = ConcurrentSkipListMap<Long, OnTheFly<T>>()
 
-    private val uncompleted = ArrayList<CallOnTheFly<T>>()
+    private val uncompleted = ArrayList<OnTheFly<T>>()
 
     private var lastContact: Long = 0L
 
@@ -117,8 +117,6 @@ internal class RawIPCClient<T : Any>(
     private val cbLock = ReentrantLock()
 
     private val blockTime = metric.histogram("ipc-client-request-block-time")
-
-    private val queueTime = metric.histogram("ipc-client-queue-time")
 
     private val batchSize = metric.histogram("ipc-client-batch-size")
 
@@ -171,90 +169,31 @@ internal class RawIPCClient<T : Any>(
             throw e.cause ?: e
         }
 
-        //TODO try schedule with delay for each call.
-        channel.eventLoop().scheduleAtFixedRate({
-            val iterator = onTheFly.iterator()
-            val now = System.currentTimeMillis()
-            while (iterator.hasNext()) {
-                val next = iterator.next()
-                if (now - next.value.callback.lastContactTimestamp > config.requestTimeoutMs) {
-                    LOG.debug(
-                        "Handle timeout request, connectionId: {}, requestId: {}.",
-                        connection.connectionId,
-                        next.key
-                    )
-                    iterator.remove()
-                    parallelCalls.release()
-                    try {
-                        next.value.doResponse(
-                            status(next.key, StatusCode.TIMEOUT)
-                        )
-                    } catch (e: Exception) {
-                        LOG.warn(
-                            "Callback error, connectionId: {}, requestId: {}.",
-                            connection.connectionId,
-                            next.key,
-                            e
-                        )
-                    }
-                } else {
-                    break
-                }
-            }
-        }, 1, 1, TimeUnit.MILLISECONDS)
-
         flusher = daemon("flusher-$id") { shouldStop ->
-            Runnable {
-                while (!shouldStop.get()) {
-                    try {
-                        val list = ArrayList<Packet<RequestHeader>>()
-                        var length = 0L
-                        var requestWithTime = queue.poll(1, TimeUnit.MILLISECONDS)
-                        if (requestWithTime != null) {
-                            val qt = measureTimeMillis {
-                                var request = requestWithTime.request
-                                list.add(request)
-                                length += request.body.getData().readableBytes()
+            while (!shouldStop.get()) {
+                try {
+                    val list = poll()
+                    batchSize.update(list.size)
 
-                                while (true) {
-                                    requestWithTime = queue.poll()
-                                    if (requestWithTime != null) {
-                                        request = requestWithTime.request
-                                        list.add(request)
-                                        length += request.body.getData().readableBytes()
-                                        if (length >= config.maxWriteBatchSize) {
-                                            break
-                                        }
-                                    } else {
-                                        break
-                                    }
-                                }
+                    val start = System.currentTimeMillis()
 
-                                batchSize.update(list.size)
-
-                                val start = System.currentTimeMillis()
-
-                                list.forEach { packet ->
-                                    channel.write(packet).addListener {
-                                        sendTime.update(System.currentTimeMillis() - start)
-                                        parallelRequestContentSize.release(packet.header.thrift.contentLength)
-                                        if (LOG.isTraceEnabled) {
-                                            LOG.trace(
-                                                "Released {} then {}.",
-                                                packet.header.thrift.contentLength,
-                                                parallelRequestContentSize.availablePermits()
-                                            )
-                                        }
-                                    }
-                                }
-
-                                channel.flush()
+                    list.forEach { packet ->
+                        channel.write(packet).addListener {
+                            sendTime.update(System.currentTimeMillis() - start)
+                            parallelRequestContentSize.release(packet.header.thrift.contentLength)
+                            if (LOG.isTraceEnabled) {
+                                LOG.trace(
+                                    "Released {} then {}.",
+                                    packet.header.thrift.contentLength,
+                                    parallelRequestContentSize.availablePermits()
+                                )
                             }
-                            queueTime.update(qt)
                         }
-                    } catch (e: InterruptedException) {
-                        //:~
                     }
+
+                    channel.flush()
+                } catch (e: InterruptedException) {
+                    //:~
                 }
             }
         }.apply { start() }
@@ -270,34 +209,70 @@ internal class RawIPCClient<T : Any>(
 
             send(type, request, callback)
 
-            body.close()
+            (body as? AutoCloseable)?.close()
         }
     }
 
     internal fun send(
         type: RequestType<T>,
-        request: Packet<RequestHeader>,
+        packet: Packet<RequestHeader>,
         callback: (Packet<ResponseHeader>) -> Any?
     ) {
         if (!connected.get()) {
-            request.close()
-            callback(request.status(StatusCode.CONNECTION_ERROR))
+            packet.close()
+            callback(packet.status(StatusCode.CONNECTION_ERROR))
         } else {
+            val timestamp = System.currentTimeMillis()
+            val request = Request(type, packet, timestamp)
+            val header = packet.header.thrift
+
             blockTime.update(measureTimeMillis {
                 parallelCalls.acquire()
+                parallelRequestContentSize.acquire(header.contentLength)
             })
 
-            val timestamp = System.currentTimeMillis()
-            val requestWithTime = RequestWithTime(type, request, timestamp)
-            val header = request.header.thrift
             val callId = header.callId
-            onTheFly[callId] = CallOnTheFly(requestWithTime, Callback(timestamp, callback))
+            onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
 
-            parallelRequestContentSize.acquire(header.contentLength)
+            queue.offer(request)
+            LOG.debug("Queued: {}.", request)
 
-            queue.offer(requestWithTime, Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-            LOG.trace("Queued request: {}.", callId)
+            val timeoutMs = packet.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
+            channel.eventLoop().schedule({
+                timeout(callId)
+            }, timeoutMs, TimeUnit.MILLISECONDS)
         }
+    }
+
+    private fun timeout(callId: Long) {
+        onTheFly.remove(callId)?.let {
+            it.doResponse(status(callId, StatusCode.TIMEOUT))
+        }
+    }
+
+    private fun poll(): ArrayList<Packet<RequestHeader>> {
+        val list = ArrayList<Packet<RequestHeader>>()
+        var length = 0L
+        var request = queue.take()
+
+        var packet = request.packet
+        list.add(packet)
+        length += packet.body.getData().readableBytes()
+
+        while (true) {
+            request = queue.poll()
+            if (request != null) {
+                packet = request.packet
+                list.add(packet)
+                length += packet.body.getData().readableBytes()
+                if (length >= config.maxWriteBatchSize) {
+                    break
+                }
+            } else {
+                break
+            }
+        }
+        return list
     }
 
     override fun close() {
@@ -323,7 +298,7 @@ internal class RawIPCClient<T : Any>(
                 LOG.info("IPC client closed, make all pending requests timeout.")
                 handlePendingRequests()
                 queue.forEach {
-                    it.request.close()
+                    it.packet.close()
                 }
             }
         }
@@ -345,7 +320,7 @@ internal class RawIPCClient<T : Any>(
         }
     }
 
-    internal fun getUncompletedRequests() : List<CallOnTheFly<T>> {
+    internal fun getUncompletedRequests() : List<OnTheFly<T>> {
         return uncompleted
     }
 
@@ -409,7 +384,7 @@ internal class RawIPCClient<T : Any>(
             val header = packet.header
             onTheFly[header.thrift.callId]?.let {
                 if (header.thrift.statusCode != StatusCode.PARTIAL_CONTENT) {
-                    it.request.request.close()
+                    it.request.packet.close()
                     onTheFly.remove(header.thrift.callId)
                     parallelCalls.release()
                 } else {
