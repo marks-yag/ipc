@@ -170,37 +170,34 @@ internal class RawIPCClient<T : Any>(
         }
 
         flusher = daemon("flusher-$id") { shouldStop ->
-            Runnable {
-                while (!shouldStop.get()) {
-                    try {
-                        val list = poll()
-                        batchSize.update(list.size)
+            while (!shouldStop.get()) {
+                try {
+                    val list = poll()
+                    batchSize.update(list.size)
 
-                        val start = System.currentTimeMillis()
+                    val start = System.currentTimeMillis()
 
-                        list.forEach { packet ->
-                            channel.write(packet).addListener {
-                                sendTime.update(System.currentTimeMillis() - start)
-                                parallelRequestContentSize.release(packet.header.thrift.contentLength)
-                                if (LOG.isTraceEnabled) {
-                                    LOG.trace(
-                                        "Released {} then {}.",
-                                        packet.header.thrift.contentLength,
-                                        parallelRequestContentSize.availablePermits()
-                                    )
-                                }
+                    list.forEach { packet ->
+                        channel.write(packet).addListener {
+                            sendTime.update(System.currentTimeMillis() - start)
+                            parallelRequestContentSize.release(packet.header.thrift.contentLength)
+                            if (LOG.isTraceEnabled) {
+                                LOG.trace(
+                                    "Released {} then {}.",
+                                    packet.header.thrift.contentLength,
+                                    parallelRequestContentSize.availablePermits()
+                                )
                             }
                         }
-
-                        channel.flush()
-                    } catch (e: InterruptedException) {
-                        //:~
                     }
+
+                    channel.flush()
+                } catch (e: InterruptedException) {
+                    //:~
                 }
             }
         }.apply { start() }
     }
-
 
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
