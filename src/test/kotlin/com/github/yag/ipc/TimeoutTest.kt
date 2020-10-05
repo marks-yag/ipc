@@ -18,6 +18,7 @@
 package com.github.yag.ipc
 
 import com.github.yag.ipc.client.NonIdempotentRequest
+import com.github.yag.ipc.client.RequestType
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import kotlin.test.Test
@@ -46,6 +47,46 @@ class TimeoutTest {
                     assertEquals(StatusCode.TIMEOUT, it.status())
                 }
                 client.sendSync(NonIdempotentRequest("bar"), ThriftBody(User("yag", "123"), 1000)).let {
+                    assertEquals(StatusCode.OK, it.status())
+                }
+            }
+        }
+    }
+
+    enum class Operation(private val timeoutMs: Long) : RequestType<Operation> {
+        FOO(1000L),
+        BAR(2000L);
+
+        override fun getName(): Operation {
+            return this
+        }
+
+        override fun timeoutMs(): Long? {
+            return timeoutMs
+        }
+    }
+
+    @Test
+    fun testPerRequestTypeTimeout() {
+        server<Operation> {
+            request {
+                set(Operation.FOO) { connection, packet, function ->
+                }
+
+                map(Operation.BAR) { request ->
+                    request.ok()
+                }
+            }
+        }.use { server ->
+            client<Operation> {
+                config {
+                    endpoint = server.endpoint
+                }
+            }.use { client ->
+                client.sendSync(Operation.FOO, ThriftBody(User("yag", "123"))).let {
+                    assertEquals(StatusCode.TIMEOUT, it.status())
+                }
+                client.sendSync(Operation.BAR, ThriftBody(User("yag", "123"))).let {
                     assertEquals(StatusCode.OK, it.status())
                 }
             }
