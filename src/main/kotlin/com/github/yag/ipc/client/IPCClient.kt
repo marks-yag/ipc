@@ -53,7 +53,7 @@ class IPCClient<T : Any>(
 
     private var client: RawIPCClient<T>
 
-    private val sessionId: String
+    val sessionId: String
 
     inner class Monitor(private val shouldStop: AtomicBoolean) : Runnable {
         override fun run() {

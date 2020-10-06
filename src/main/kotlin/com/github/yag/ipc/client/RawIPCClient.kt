@@ -142,6 +142,9 @@ internal class RawIPCClient<T : Any>(
                 prompt = promptFuture.get()
 
                 val connectionRequest = ConnectRequest("V1", ByteBuffer.wrap(promptHandler(prompt)))
+                if (sessionId != null) {
+                    connectionRequest.setSessionId(sessionId)
+                }
                 if (config.headers.isNotEmpty()) {
                     connectionRequest.setHeaders(config.headers)
                 }
