@@ -424,7 +424,7 @@ class IPCTest {
      * Test client can reconnect to server and make remote calls.
      */
     @Test
-    fun testClientReconnect() {
+    fun testCallRetryWithClientReconnect() {
         var ignore = true
         server<String> {
             request {
