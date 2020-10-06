@@ -31,6 +31,8 @@ class Connection(val id: String, var promptData: ByteArray) {
 
     lateinit var connectRequest: ConnectRequest
 
+    lateinit var sessionId: String
+
     var lastContactTimestamp: Long = 0
 
     var inactive = false

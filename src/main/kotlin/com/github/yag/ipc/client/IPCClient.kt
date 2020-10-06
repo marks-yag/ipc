@@ -53,6 +53,8 @@ class IPCClient<T : Any>(
 
     private var client: RawIPCClient<T>
 
+    private val sessionId: String
+
     inner class Monitor(private val shouldStop: AtomicBoolean) : Runnable {
         override fun run() {
             while (!shouldStop.get()) {
@@ -65,7 +67,7 @@ class IPCClient<T : Any>(
 
                     Thread.sleep(config.connectBackOff.baseIntervalMs)
                     client = retry.call {
-                        RawIPCClient<T>(config, promptHandler, metric, id)
+                        RawIPCClient<T>(config, promptHandler, sessionId, metric, id)
                     }.also {
                         for (call in uncompleted) {
                             it.send(call.request.type, call.request.packet, call.callback.func)
@@ -82,8 +84,9 @@ class IPCClient<T : Any>(
 
     init {
         client = retry.call {
-            RawIPCClient(config, promptHandler, metric, id)
+            RawIPCClient(config, promptHandler, null, metric, id)
         }
+        sessionId = client.connection.sessionId
         monitor = Daemon("connection-monitor") {
             Monitor(it)
         }.also { it.start() }

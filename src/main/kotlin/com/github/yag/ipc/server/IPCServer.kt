@@ -18,6 +18,7 @@
 package com.github.yag.ipc.server
 
 import com.codahale.metrics.MetricRegistry
+import com.github.yag.crypto.toBase64
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejectException
@@ -58,6 +59,7 @@ import java.net.BindException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
+import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -84,6 +86,8 @@ class IPCServer internal constructor(
     private val trafficHandler = GlobalTrafficShapingHandler(trafficExecutor, 1000)
 
     val endpoint: InetSocketAddress
+
+    private val random = SecureRandom()
 
     private val messageReceived = metric.counter("ipc-server-message-received")
 
@@ -133,6 +137,8 @@ class IPCServer internal constructor(
         override fun initChannel(socketChannel: SocketChannel) {
             LOG.debug("New tcp connection arrived.")
 
+
+
             val connection = Connection(UUID.randomUUID().toString(), promptData())
 
             socketChannel.pipeline().apply {
@@ -173,6 +179,14 @@ class IPCServer internal constructor(
                 connection.localAddress = ctx.channel().localAddress() as InetSocketAddress
                 connection.connectRequest = TDecoder.decode(ConnectRequest(), buf)
 
+                connection.sessionId = if (connection.connectRequest.isSetSessionId) {
+                    connection.connectRequest.sessionId
+                } else {
+                    val id = ByteArray(config.sessionIdLength)
+                    random.nextBytes(id)
+                    id.toBase64()
+                }
+
                 try {
                     connectionHandler.handle(connection)
                     connected = true
@@ -181,7 +195,7 @@ class IPCServer internal constructor(
                         connection.id,
                         connection.remoteAddress
                     )
-                    ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.accepted(ConnectionAccepted(connection.id))))
+                    ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.accepted(ConnectionAccepted(connection.id, connection.sessionId))))
                 } catch (e: ConnectionRejectException) {
                     LOG.debug(
                         "Reject connection, connectionId: {}, remoteAddress: {}.",

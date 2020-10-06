@@ -41,6 +41,9 @@ class IPCServerConfig {
     var childThreads: Int = 0
 
     @Value
+    var sessionIdLength: Int = 32
+
+    @Value
     var channelConfig = ChannelConfig()
 
 }

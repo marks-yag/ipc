@@ -40,42 +40,40 @@ class TimeoutTest {
     }
 
     @Test
-    fun testPerRequestTypeTimeout() {
-        server<Operation> {
-            request {
-                set(Operation.FOO) { connection, packet, function ->
-                }
-
-                set(Operation.BAR) { connection, packet, function ->
-                }
+    fun testPerRequestTypeTimeout() = server<Operation> {
+        request {
+            set(Operation.FOO) { _, _, _ ->
             }
-        }.use { server ->
-            client<Operation> {
-                config {
-                    endpoint = server.endpoint
-                    requestTimeoutMs = 100L
-                }
-            }.use { client ->
-                val start = System.currentTimeMillis()
-                val first = client.send(Operation.FOO, ThriftBody(User("yag", "123")))
-                val second = client.send(Operation.BAR, ThriftBody(User("yag", "456")))
-                val third = client.send(Operation.FOO, ThriftBody(User("yag", "456"), 500L))
 
-                val thirdResult = third.get()
-                val thirdCost = System.currentTimeMillis() - start
-                assertEquals(StatusCode.TIMEOUT, thirdResult.status())
-                assertTrue(thirdCost in 500L..600L)
-
-                val secondResult = second.get()
-                val secondCost = System.currentTimeMillis() - start
-                assertEquals(StatusCode.TIMEOUT, secondResult.status())
-                assertTrue(secondCost in 1000L..1100L)
-
-                val firstResult = first.get()
-                val firstCost = System.currentTimeMillis() - start
-                assertEquals(StatusCode.TIMEOUT, firstResult.status())
-                assertTrue(firstCost in 2000L..2100L)
+            set(Operation.BAR) { _, _, _ ->
             }
+        }
+    }.use { server ->
+        client<Operation> {
+            config {
+                endpoint = server.endpoint
+                requestTimeoutMs = 100L
+            }
+        }.use { client ->
+            val start = System.currentTimeMillis()
+            val first = client.send(Operation.FOO, ThriftBody(User("yag", "123")))
+            val second = client.send(Operation.BAR, ThriftBody(User("yag", "456")))
+            val third = client.send(Operation.FOO, ThriftBody(User("yag", "456"), 500L))
+
+            val thirdResult = third.get()
+            val thirdCost = System.currentTimeMillis() - start
+            assertEquals(StatusCode.TIMEOUT, thirdResult.status())
+            assertTrue(thirdCost in 500L..600L)
+
+            val secondResult = second.get()
+            val secondCost = System.currentTimeMillis() - start
+            assertEquals(StatusCode.TIMEOUT, secondResult.status())
+            assertTrue(secondCost in 1000L..1100L)
+
+            val firstResult = first.get()
+            val firstCost = System.currentTimeMillis() - start
+            assertEquals(StatusCode.TIMEOUT, firstResult.status())
+            assertTrue(firstCost in 2000L..2100L)
         }
     }
 

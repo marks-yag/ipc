@@ -76,6 +76,7 @@ import kotlin.system.measureTimeMillis
 internal class RawIPCClient<T : Any>(
     private val config: IPCClientConfig,
     private val promptHandler: (Prompt) -> ByteArray,
+    private val sessionId: String?,
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
@@ -86,7 +87,7 @@ internal class RawIPCClient<T : Any>(
 
     private val promptFuture: CompletableFuture<Prompt>
 
-    private val connection: ConnectionAccepted
+    internal val connection: ConnectionAccepted
 
     private val connectFuture: CompletableFuture<ConnectionAccepted>
 

@@ -8,14 +8,16 @@ struct Prompt {
 struct ConnectRequest {
 1: required string version
 2: optional i64 requestTimeoutMs
-3: optional map<string, string> headers
-4: required binary body
+3: optional string sessionId
+4: optional map<string, string> headers
+5: required binary body
 }
 
 struct ConnectionAccepted {
 1: required string connectionId
-2: optional map<string, string> headers
-3: optional binary body
+2: required string sessionId
+3: optional map<string, string> headers
+4: optional binary body
 }
 
 struct ConnectionRejected {
