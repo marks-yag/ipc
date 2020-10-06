@@ -142,7 +142,7 @@ class IPCClient<T : Any>(
         val future = CompletableFuture<Packet<ResponseHeader>>()
         send(type, body) {
             future.complete(it.also {
-                it.body.getData().retain()
+                it.body.data().retain()
             })
         }
         return future

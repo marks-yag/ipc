@@ -26,7 +26,7 @@ class PlainBody(private val body: ByteBuf, private val timeoutMs: Long? = null) 
         return timeoutMs
     }
 
-    override fun getData(): ByteBuf {
+    override fun data(): ByteBuf {
         return body
     }
 

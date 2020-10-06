@@ -26,7 +26,7 @@ data class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: Body
     internal fun isHeartbeat() = header.isHeartbeat(header.thrift)
 
     override fun close() {
-        body.getData().release()
+        body.data().release()
     }
 
     companion object {

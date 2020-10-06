@@ -203,7 +203,7 @@ internal class RawIPCClient<T : Any>(
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
         lock.withLock {
             val name = type.getName()
-            val buf = body.getData()
+            val buf = body.data()
             val header = RequestHeader(++currentId, name.toString(), buf.readableBytes())
             buf.retain()
             val request = Packet(RequestPacketHeader(header), body)
@@ -258,14 +258,14 @@ internal class RawIPCClient<T : Any>(
 
         var packet = request.packet
         list.add(packet)
-        length += packet.body.getData().readableBytes()
+        length += packet.body.data().readableBytes()
 
         while (true) {
             request = queue.poll()
             if (request != null) {
                 packet = request.packet
                 list.add(packet)
-                length += packet.body.getData().readableBytes()
+                length += packet.body.data().readableBytes()
                 if (length >= config.maxWriteBatchSize) {
                     break
                 }

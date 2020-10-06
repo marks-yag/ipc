@@ -27,7 +27,7 @@ class ThriftBody(private val obj: TSerializable, private val timeoutMs: Long? = 
 
     private val buf = TEncoder.encode(obj, allocator.buffer())
 
-    override fun getData(): ByteBuf {
+    override fun data(): ByteBuf {
         return buf
     }
 

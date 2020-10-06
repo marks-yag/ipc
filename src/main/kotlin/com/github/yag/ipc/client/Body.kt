@@ -21,7 +21,7 @@ import io.netty.buffer.ByteBuf
 
 interface Body {
 
-    fun getData() : ByteBuf
+    fun data() : ByteBuf
 
     fun timeoutMs() : Long? = null
 
