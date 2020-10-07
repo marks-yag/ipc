@@ -17,10 +17,13 @@
 
 package com.github.yag.ipc
 
+import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.client
+import com.github.yag.ipc.server.Connection
+import com.github.yag.ipc.server.RequestHandler
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
-import com.github.yag.retry.Retry
+import io.netty.buffer.Unpooled
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -38,11 +41,33 @@ class SessionTest {
                     sessionId = it.sessionId
                 }
             }
+            request {
+                set("foo", object : RequestHandler {
+                    override fun handle(
+                        connection: Connection,
+                        request: Packet<RequestHeader>,
+                        echo: (Packet<ResponseHeader>) -> Unit
+                    ) {
+                        if (connection.sessionId == sessionId) {
+                            echo(request.ok())
+                        } else {
+                            echo(request.status(StatusCode.INTERNAL_ERROR))
+                        }
+                    }
+                })
+            }
         }.use { server ->
             client<String> {
+                config {
+                    endpoint = server.endpoint
+                }
             }.use { client ->
                 assertNotNull(sessionId)
                 assertEquals(sessionId, client.sessionId)
+
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).let {
+                    assertEquals(StatusCode.OK, it.status())
+                }
             }
         }
     }
