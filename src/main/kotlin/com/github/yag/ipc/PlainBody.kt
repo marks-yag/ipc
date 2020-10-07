@@ -19,8 +19,9 @@ package com.github.yag.ipc
 
 import com.github.yag.ipc.client.Body
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 
-class PlainBody(private val body: ByteBuf, private val timeoutMs: Long? = null) : Body {
+class PlainBody @JvmOverloads constructor(private val body: ByteBuf, private val timeoutMs: Long? = null) : Body {
 
     override fun timeoutMs(): Long? {
         return timeoutMs
@@ -28,6 +29,11 @@ class PlainBody(private val body: ByteBuf, private val timeoutMs: Long? = null) 
 
     override fun data(): ByteBuf {
         return body
+    }
+
+    companion object {
+        @JvmStatic
+        fun empty(timeoutMs: Long? = null) = PlainBody(Unpooled.EMPTY_BUFFER, timeoutMs)
     }
 
 }

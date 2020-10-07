@@ -40,32 +40,12 @@ import kotlin.test.assertTrue
 
 class BasicTest {
 
-    private lateinit var requestData: ByteBuf
-
-    private lateinit var responseData: ByteBuf
-
-
-    @BeforeTest
-    fun before() {
-        requestData = Unpooled.directBuffer().writeBytes("Ping".toByteArray())
-        responseData = Unpooled.directBuffer().writeBytes("Pong".toByteArray())
-    }
-
-    @AfterTest
-    fun after() {
-        assertEquals(1, requestData.refCnt())
-        requestData.release()
-        assertEquals(1, responseData.refCnt())
-        responseData.release()
-        System.gc()
-    }
-
     @Test
     fun testRequestMapping() {
         server<String> {
             request {
                 map("foo") { request ->
-                    request.ok(responseData.retain())
+                    request.ok(Unpooled.EMPTY_BUFFER)
                 }
             }
         }.use { server ->
@@ -74,11 +54,10 @@ class BasicTest {
                     endpoint = server.endpoint
                 }
             }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), PlainBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody.empty()).use {
                     assertEquals(StatusCode.OK, it.status())
-                    it.body().release()
                 }
-                client.sendSync(NonIdempotentRequest("non-exist"), PlainBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("non-exist"), PlainBody.empty()).use {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
                 }
             }
@@ -87,6 +66,8 @@ class BasicTest {
 
     @Test
     fun testResponseContent() {
+        val requestData = Unpooled.directBuffer().writeBytes("Ping".toByteArray())
+        val responseData = Unpooled.directBuffer().writeBytes("Pong".toByteArray())
         server<String> {
             request {
                 map("any") { request ->
@@ -100,14 +81,18 @@ class BasicTest {
                 }
             }.use { client ->
                 assertEquals(1, requestData.refCnt())
-                client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).let {
+                client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use {
+                    requestData.release()
+
                     assertEquals(StatusCode.OK, it.status())
                     val body = it.body()
                     assertEquals(1, body.refCnt())
                     assertEquals(responseData, body)
-                    body.release()
+
+                    responseData.release()
                 }
-                assertEquals(1, requestData.refCnt())
+                assertEquals(0, requestData.refCnt())
+                assertEquals(0, requestData.refCnt())
             }
         }
     }
@@ -130,7 +115,7 @@ class BasicTest {
                 }
             }.use { client ->
                 val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
-                client.send(NonIdempotentRequest("foo"), PlainBody(requestData)) {
+                client.send(NonIdempotentRequest("foo"), PlainBody.empty()) {
                     queue.add(it)
                 }
 
@@ -191,7 +176,7 @@ class BasicTest {
             }.use { client ->
                 val latch = CountDownLatch(10000)
                 repeat(10000) {
-                    client.send(NonIdempotentRequest("foo"), PlainBody(requestData)) {
+                    client.send(NonIdempotentRequest("foo"), PlainBody.empty()) {
                         latch.countDown()
                     }
                 }
@@ -228,78 +213,13 @@ class BasicTest {
         }.use { client ->
             assertTrue(client.isConnected())
 
-            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody(requestData))
+            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody.empty())
             server.close()
 
             val result = resultFuture.get(3, TimeUnit.SECONDS)
             assertEquals(StatusCode.TIMEOUT, result.use { it.status() })
 
             assertFalse(client.isConnected())
-        }
-    }
-
-    @Test
-    fun testMultipleClients() {
-        server<String> {
-            request {
-                map("add") {
-                    val data = it.body.data()
-                    val lhs = data.readLong()
-                    val rhs = data.readLong()
-                    val result = Unpooled.buffer(8, 8)
-                    result.writeLong(lhs + rhs)
-                    it.ok(result)
-                }
-            }
-        }.use { server ->
-            val threads = Runtime.getRuntime().availableProcessors()
-            val clients = Array(threads) {
-                client<String> {
-                    config {
-                        endpoint = server.endpoint
-                    }
-                }
-            }
-
-            val r = Random(System.currentTimeMillis())
-
-            val loop = 10000
-
-            val executor = Executors.newCachedThreadPool()
-
-            var error = AtomicBoolean(false)
-
-            repeat(threads) {
-                executor.submit {
-                    for (i in 0 .. loop) {
-                        val lhs = r.nextLong()
-                        val rhs = r.nextLong()
-                        val request = Unpooled.buffer(16)
-                        request.writeLong(lhs)
-                        request.writeLong(rhs)
-                        val result = clients[it].sendSync(NonIdempotentRequest("add"), PlainBody(request))
-                        val sum = result.body.data().use {
-                            it.readLong()
-                        }
-
-                        if (sum != lhs + rhs) {
-                            error.set(true)
-                            System.err.println("$lhs + $rhs != $sum")
-                            break
-                        }
-                    }
-                }
-            }
-
-
-            executor.shutdown()
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MICROSECONDS)
-
-            assertFalse(error.get())
-
-            clients.forEach {
-                it.close()
-            }
         }
     }
 
