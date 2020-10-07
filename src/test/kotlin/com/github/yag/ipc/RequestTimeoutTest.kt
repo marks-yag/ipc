@@ -24,7 +24,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class TimeoutTest {
+class RequestTimeoutTest {
 
     enum class Operation(private val timeoutMs: Long) : RequestType<Operation> {
         FOO(2000L),
