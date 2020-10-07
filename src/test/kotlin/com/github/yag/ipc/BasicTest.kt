@@ -190,37 +190,4 @@ class BasicTest {
         }
     }
 
-    /**
-     * Test in case of server close before response to client, client can:
-     * 1. Detect server was closed.
-     * 2. Let pending requests timeout.
-     */
-    @Test
-    fun testServerClose() {
-        val server = server<String> {
-            request {
-                set("ignore") { _, _, _ ->
-                    //:~
-                }
-            }
-        }
-        client<String> {
-            config {
-                endpoint = server.endpoint
-                heartbeatTimeoutMs = Long.MAX_VALUE
-                connectRetry.maxRetries = 0
-            }
-        }.use { client ->
-            assertTrue(client.isConnected())
-
-            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody.empty())
-            server.close()
-
-            val result = resultFuture.get(3, TimeUnit.SECONDS)
-            assertEquals(StatusCode.TIMEOUT, result.use { it.status() })
-
-            assertFalse(client.isConnected())
-        }
-    }
-
 }

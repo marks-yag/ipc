@@ -17,11 +17,14 @@
 
 package com.github.yag.ipc
 
+import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.RequestType
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RequestTimeoutTest {
@@ -74,6 +77,38 @@ class RequestTimeoutTest {
             val firstCost = System.currentTimeMillis() - start
             assertEquals(StatusCode.TIMEOUT, firstResult.status())
             assertTrue(firstCost in 2000L..2100L)
+        }
+    }
+
+    /**
+     * Test in case of server close before response to client, client can:
+     * 1. Detect server was closed.
+     * 2. Let pending requests timeout.
+     */
+    @Test
+    fun testServerClose() {
+        val server = server<String> {
+            request {
+                set("ignore") { _, _, _ ->
+                    //:~
+                }
+            }
+        }
+        client<String> {
+            config {
+                endpoint = server.endpoint
+                requestTimeoutMs = Long.MAX_VALUE
+            }
+        }.use { client ->
+            assertTrue(client.isConnected())
+
+            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody.empty())
+            server.close()
+
+            val result = resultFuture.get(3, TimeUnit.SECONDS)
+            assertEquals(StatusCode.TIMEOUT, result.use { it.status() })
+
+            assertFalse(client.isConnected())
         }
     }
 
