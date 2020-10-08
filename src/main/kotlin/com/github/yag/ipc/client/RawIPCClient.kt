@@ -45,6 +45,12 @@ import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.ChannelInitializer
+import io.netty.channel.epoll.Epoll
+import io.netty.channel.epoll.EpollEventLoopGroup
+import io.netty.channel.epoll.EpollSocketChannel
+import io.netty.channel.kqueue.KQueue
+import io.netty.channel.kqueue.KQueueEventLoopGroup
+import io.netty.channel.kqueue.KQueueSocketChannel
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
@@ -125,10 +131,20 @@ internal class RawIPCClient<T : Any>(
 
     init {
         bootstrap = Bootstrap().apply {
-            channel(NioSocketChannel::class.java)
-                .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
-                .applyChannelConfig(config.channel)
-                .handler(ChildChannelHandler())
+            if (Epoll.isAvailable()) {
+                LOG.debug("Using epoll.")
+                channel(EpollSocketChannel::class.java)
+                    .group(EpollEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+            } else if (KQueue.isAvailable()) {
+                LOG.debug("Using kqueue.")
+                channel(KQueueSocketChannel::class.java)
+                    .group(KQueueEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+            } else {
+                LOG.debug("Using nio.")
+                channel(NioSocketChannel::class.java)
+                    .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+
+            }.applyChannelConfig(config.channel).handler(ChildChannelHandler())
         }
         closed.set(false)
         currentId = 0L
