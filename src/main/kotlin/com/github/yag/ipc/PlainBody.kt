@@ -21,7 +21,7 @@ import com.github.yag.ipc.client.Body
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 
-class PlainBody(private val body: ByteBuf) : Body {
+data class PlainBody(private val body: ByteBuf) : Body {
 
     override fun data(): ByteBuf {
         return body
