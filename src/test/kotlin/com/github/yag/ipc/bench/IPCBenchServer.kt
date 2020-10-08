@@ -51,7 +51,7 @@ object IPCBenchServer {
                         callMetric.mark()
                         readMetric.mark(it.header.thrift.contentLength.toLong())
                         writeMetric.mark(config.responseBodySize.toLong())
-                        it.ok(buf.slice())
+                        it.ok(buf.retain())
                     }
                 }
             }

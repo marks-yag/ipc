@@ -20,20 +20,16 @@ package com.github.yag.ipc
 import com.github.yag.ipc.client.Body
 import io.netty.buffer.Unpooled
 import org.apache.thrift.TSerializable
-import org.slf4j.LoggerFactory
 
 data class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: Body) : AutoCloseable {
 
     internal fun isHeartbeat() = header.isHeartbeat(header.thrift)
 
     override fun close() {
-        LOG.debug("Close packet: {}, ref: {}.", body, body.data().refCnt())
         body.data().release()
     }
 
     companion object {
-
-        private val LOG = LoggerFactory.getLogger(Packet::class.java)
 
         internal val requestHeartbeat = Packet(RequestPacketHeader(RequestHeader(-1, "", 0)), PlainBody(Unpooled.EMPTY_BUFFER))
 

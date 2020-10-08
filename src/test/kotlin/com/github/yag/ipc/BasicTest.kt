@@ -71,7 +71,7 @@ class BasicTest {
         server<String> {
             request {
                 map("any") { request ->
-                    request.ok(responseData)
+                    request.ok(responseData.retain())
                 }
             }
         }.use { server ->
@@ -86,12 +86,13 @@ class BasicTest {
 
                     assertEquals(StatusCode.OK, it.status())
                     val body = it.body()
+                    assertEquals(1, body.refCnt())
                     assertEquals(responseData, body)
 
                     responseData.release()
                 }
                 assertEquals(0, requestData.refCnt())
-                assertEquals(0, responseData.refCnt())
+                assertEquals(0, requestData.refCnt())
             }
         }
     }
