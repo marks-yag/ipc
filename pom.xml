@@ -39,7 +39,7 @@
         <kotlin.code.style>official</kotlin.code.style>
         <junit.version>4.12</junit.version>
         <config.version>0.10.1</config.version>
-        <retry.version>0.5.2</retry.version>
+        <retry.version>0.4.0</retry.version>
         <punner.version>0.9.16</punner.version>
 
         <maven.compiler.source>1.8</maven.compiler.source>
