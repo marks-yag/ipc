@@ -61,12 +61,6 @@ class RequestTimeoutTest {
             val start = System.currentTimeMillis()
             val first = client.send(Operation.FOO, ThriftBody(User("yag", "123")))
             val second = client.send(Operation.BAR, ThriftBody(User("yag", "456")))
-            val third = client.send(Operation.FOO, ThriftBody(User("yag", "456"), 500L))
-
-            val thirdResult = third.get()
-            val thirdCost = System.currentTimeMillis() - start
-            assertEquals(StatusCode.TIMEOUT, thirdResult.status())
-            assertTrue(thirdCost in 500L..600L)
 
             val secondResult = second.get()
             val secondCost = System.currentTimeMillis() - start
@@ -102,7 +96,7 @@ class RequestTimeoutTest {
         }.use { client ->
             assertTrue(client.isConnected())
 
-            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody.empty())
+            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody.EMPTY)
             server.close()
 
             val result = resultFuture.get(3, TimeUnit.SECONDS)

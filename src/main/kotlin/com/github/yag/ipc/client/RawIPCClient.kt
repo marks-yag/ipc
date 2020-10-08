@@ -241,7 +241,7 @@ internal class RawIPCClient<T : Any>(
             queue.offer(request)
             LOG.debug("Queued: {}.", request)
 
-            val timeoutMs = packet.body.timeoutMs() ?: type.timeoutMs() ?: config.requestTimeoutMs
+            val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
             channel.eventLoop().schedule({
                 timeout(callId)
             }, timeoutMs, TimeUnit.MILLISECONDS)

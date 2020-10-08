@@ -23,6 +23,4 @@ interface Body {
 
     fun data() : ByteBuf
 
-    fun timeoutMs() : Long? = null
-
 }

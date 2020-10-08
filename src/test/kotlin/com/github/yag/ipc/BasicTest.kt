@@ -54,10 +54,10 @@ class BasicTest {
                     endpoint = server.endpoint
                 }
             }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), PlainBody.empty()).use {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody.EMPTY).use {
                     assertEquals(StatusCode.OK, it.status())
                 }
-                client.sendSync(NonIdempotentRequest("non-exist"), PlainBody.empty()).use {
+                client.sendSync(NonIdempotentRequest("non-exist"), PlainBody.EMPTY).use {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
                 }
             }
@@ -115,7 +115,7 @@ class BasicTest {
                 }
             }.use { client ->
                 val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
-                client.send(NonIdempotentRequest("foo"), PlainBody.empty()) {
+                client.send(NonIdempotentRequest("foo"), PlainBody.EMPTY) {
                     queue.add(it)
                 }
 
@@ -176,7 +176,7 @@ class BasicTest {
             }.use { client ->
                 val latch = CountDownLatch(10000)
                 repeat(10000) {
-                    client.send(NonIdempotentRequest("foo"), PlainBody.empty()) {
+                    client.send(NonIdempotentRequest("foo"), PlainBody.EMPTY) {
                         latch.countDown()
                     }
                 }
