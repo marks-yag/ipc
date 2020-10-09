@@ -258,7 +258,7 @@ internal class RawIPCClient<T : Any>(
             onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
 
             queue.offer(request)
-            LOG.debug("Queued: {}.", request)
+            LOG.trace("Queued: {}.", request)
 
             val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
             channel.eventLoop().schedule({
