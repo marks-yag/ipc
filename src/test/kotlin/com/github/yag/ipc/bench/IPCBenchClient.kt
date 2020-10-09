@@ -54,7 +54,7 @@ object IPCBenchClient {
                 }.use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
-                        client.send(NonIdempotentRequest(CallType.values().random()), PlainBody(buf)) {
+                        client.send(NonIdempotentRequest(CallType.values().random()), PlainBody(buf.slice())) {
                             val endMs = System.currentTimeMillis()
                             callMetric.update(endMs - startMs, TimeUnit.MILLISECONDS)
 
