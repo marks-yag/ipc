@@ -37,10 +37,7 @@ import com.github.yag.ipc.applyChannelConfig
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
-import io.netty.channel.ChannelFuture
-import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.channel.ChannelInitializer
+import io.netty.channel.*
 import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollEventLoopGroup
 import io.netty.channel.epoll.EpollServerSocketChannel
@@ -115,27 +112,31 @@ class IPCServer internal constructor(
             LOG.info("Start ipc server.")
         }
         serverBootstrap = ServerBootstrap().apply {
-            if (Epoll.isAvailable()) {
-                LOG.debug("Using epoll.")
-                channel(EpollServerSocketChannel::class.java)
-                    .group(
-                        EpollEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
-                        EpollEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
-                    )
-            } else if (KQueue.isAvailable()) {
-                LOG.debug("Using kqueue.")
-                channel(KQueueServerSocketChannel::class.java)
-                    .group(
-                        KQueueEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
-                        KQueueEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
-                    )
-            } else {
-                LOG.debug("Using nio.")
-                channel(NioServerSocketChannel::class.java)
-                    .group(
-                        NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
-                        NioEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
-                    )
+            when {
+                Epoll.isAvailable() -> {
+                    LOG.debug("Using epoll.")
+                    channel(EpollServerSocketChannel::class.java)
+                        .group(
+                            EpollEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
+                            EpollEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+                        )
+                }
+                KQueue.isAvailable() -> {
+                    LOG.debug("Using kqueue.")
+                    channel(KQueueServerSocketChannel::class.java)
+                        .group(
+                            KQueueEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
+                            KQueueEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+                        )
+                }
+                else -> {
+                    LOG.debug("Using nio.")
+                    channel(NioServerSocketChannel::class.java)
+                        .group(
+                            NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
+                            NioEventLoopGroup(config.childThreads, DefaultThreadFactory("ipc-server-child-$id", true))
+                        )
+                }
             }.applyChannelConfig(config.channelConfig).childHandler(handler)
         }
 

@@ -131,19 +131,23 @@ internal class RawIPCClient<T : Any>(
 
     init {
         bootstrap = Bootstrap().apply {
-            if (Epoll.isAvailable()) {
-                LOG.debug("Using epoll.")
-                channel(EpollSocketChannel::class.java)
-                    .group(EpollEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
-            } else if (KQueue.isAvailable()) {
-                LOG.debug("Using kqueue.")
-                channel(KQueueSocketChannel::class.java)
-                    .group(KQueueEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
-            } else {
-                LOG.debug("Using nio.")
-                channel(NioSocketChannel::class.java)
-                    .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+            when {
+                Epoll.isAvailable() -> {
+                    LOG.debug("Using epoll.")
+                    channel(EpollSocketChannel::class.java)
+                        .group(EpollEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+                }
+                KQueue.isAvailable() -> {
+                    LOG.debug("Using kqueue.")
+                    channel(KQueueSocketChannel::class.java)
+                        .group(KQueueEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
+                }
+                else -> {
+                    LOG.debug("Using nio.")
+                    channel(NioSocketChannel::class.java)
+                        .group(NioEventLoopGroup(config.threads, DefaultThreadFactory(id, true)))
 
+                }
             }.applyChannelConfig(config.channel).handler(ChildChannelHandler())
         }
         closed.set(false)
