@@ -243,7 +243,6 @@ internal class RawIPCClient<T : Any>(
         callback: (Packet<ResponseHeader>) -> Any?
     ) {
         if (!connected.get()) {
-            packet.close()
             callback(packet.status(StatusCode.CONNECTION_ERROR))
         } else {
             val timestamp = System.currentTimeMillis()
