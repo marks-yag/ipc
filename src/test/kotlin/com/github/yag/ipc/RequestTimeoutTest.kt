@@ -65,12 +65,12 @@ class RequestTimeoutTest {
             val secondResult = second.get()
             val secondCost = System.currentTimeMillis() - start
             assertEquals(StatusCode.TIMEOUT, secondResult.status())
-            assertTrue(secondCost in 1000L..1100L)
+            assertTrue(secondCost in 1000L..1200L, "Cost $secondCost")
 
             val firstResult = first.get()
             val firstCost = System.currentTimeMillis() - start
             assertEquals(StatusCode.TIMEOUT, firstResult.status())
-            assertTrue(firstCost in 2000L..2100L)
+            assertTrue(firstCost in 2000L..2200L, "Cost $firstCost")
         }
     }
 
