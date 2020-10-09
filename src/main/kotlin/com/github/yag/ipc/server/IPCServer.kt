@@ -323,7 +323,6 @@ class IPCServer internal constructor(
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
-            connection.inactive = true
             LOG.debug("Channel inactive: {}.", connection.id)
         }
     }
