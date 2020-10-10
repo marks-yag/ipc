@@ -24,7 +24,7 @@
     <groupId>com.github.marks-yag</groupId>
     <artifactId>ipc</artifactId>
     <url>https://github.com/marks-yag/ipc</url>
-    <version>0.17.5</version>
+    <version>0.17.6</version>
     <packaging>jar</packaging>
 
     <name>IPC</name>
@@ -148,12 +148,6 @@
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>com.caucho</groupId>
-            <artifactId>hessian</artifactId>
-            <version>4.0.63</version>
         </dependency>
 
         <!-- logging -->
