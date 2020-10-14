@@ -259,16 +259,7 @@ class IPCClient<T : Any>(
      * @return true is connected.
      */
     fun isConnected(): Boolean {
-        val rl = lock.readLock()
-        return if (rl.tryLock()) {
-            try {
-                client.isConnected()
-            } finally {
-                rl.unlock()
-            }
-        } else {
-            false
-        }
+        return !lock.isWriteLocked
     }
 
     internal fun getConnection() = client.connection

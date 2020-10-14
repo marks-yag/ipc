@@ -23,6 +23,7 @@ import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.google.common.util.concurrent.SettableFuture
 import io.netty.buffer.Unpooled
+import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
@@ -147,20 +148,25 @@ class ConnectTest {
         val client = SettableFuture.create<IPCClient<String>>()
 
         val thread = thread {
-            assertFailsWith<ConnectException> {
-                client.set(client {
-                    config {
-                        endpoint = server.endpoint
-                    }
-                })
-            }
+            client.set(client {
+                config {
+                    endpoint = server.endpoint
+                }
+            })
         }
 
-        Thread.sleep(1000)
+        Thread.sleep(5000)
+        assertFalse(client.isDone)
+
+        LOG.debug("Try to interrupt client.")
         thread.interrupt()
         thread.join()
 
         assertFalse(client.isDone)
+    }
+
+    companion object {
+        private val LOG = LoggerFactory.getLogger(ConnectTest::class.java)
     }
 
 }

@@ -117,8 +117,6 @@ internal class RawIPCClient<T : Any>(
 
     private val closed = AtomicBoolean()
 
-    private val connected = AtomicBoolean()
-
     private val lock = ReentrantLock()
 
     private val cbLock = ReentrantLock()
@@ -178,15 +176,16 @@ internal class RawIPCClient<T : Any>(
         } catch (e: SocketException) {
             throw SocketException(e.message)
         } finally {
+            LOG.debug("Cleanup bootstrap threads.")
             if (!succ) {
                 bootstrap.config().group().shutdownGracefully().sync()
             }
+            LOG.debug("Cleanup bootstrap threads done.")
         }
 
         LOG.debug("New ipc client created.")
         try {
             connection = connectFuture.get()
-            connected.set(true)
             LOG.debug("New ipc client connection accepted: {}.", connection.connectionId)
         } catch (e: ExecutionException) {
             throw e.cause ?: e
@@ -335,11 +334,6 @@ internal class RawIPCClient<T : Any>(
         return uncompleted
     }
 
-    fun isConnected(): Boolean {
-        LOG.debug("Check connection of: ${connection.connectionId}")
-        return connected.get()
-    }
-
     inner class ResponseDecoder : ByteToMessageDecoder() {
 
         @Volatile
@@ -427,12 +421,10 @@ internal class RawIPCClient<T : Any>(
                         ctx.channel().close()
                     }
                     IdleState.WRITER_IDLE -> {
-                        if (connected.get()) {
-                            LOG.debug("Send heartbeat.")
-                            ctx.channel().writeAndFlush(
-                                Packet.requestHeartbeat
-                            ).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
-                        }
+                        LOG.debug("Send heartbeat.")
+                        ctx.channel().writeAndFlush(
+                            Packet.requestHeartbeat
+                        ).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
                     }
                 }
             }
