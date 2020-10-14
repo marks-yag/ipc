@@ -30,6 +30,10 @@ fun Packet<RequestHeader>.ok(data: ByteBuf = Unpooled.EMPTY_BUFFER): Packet<Resp
     return status(StatusCode.OK, data)
 }
 
+fun Packet<RequestHeader>.ok(data: ByteArray): Packet<ResponseHeader> {
+    return status(StatusCode.OK, Unpooled.wrappedBuffer(data))
+}
+
 fun Packet<RequestHeader>.status(code: StatusCode, data: ByteBuf = Unpooled.EMPTY_BUFFER): Packet<ResponseHeader> {
     return status(header.thrift.callId, code, data)
 }

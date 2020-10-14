@@ -18,6 +18,7 @@
 package com.github.yag.ipc.client
 
 import com.codahale.metrics.MetricRegistry
+import com.github.yag.ipc.Body
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejectException

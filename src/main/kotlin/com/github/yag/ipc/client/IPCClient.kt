@@ -18,6 +18,7 @@
 package com.github.yag.ipc.client
 
 import com.codahale.metrics.MetricRegistry
+import com.github.yag.ipc.Body
 import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody

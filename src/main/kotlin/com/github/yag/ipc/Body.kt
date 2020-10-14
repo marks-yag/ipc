@@ -15,12 +15,21 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
 
 interface Body {
 
     fun data() : ByteBuf
+
+    fun nioBufferData() = data().nioBuffer()
+
+    fun arrayData() : ByteArray {
+        val buf = data()
+        return ByteArray(buf.readableBytes()).apply {
+            buf.readBytes(this)
+        }
+    }
 
 }
