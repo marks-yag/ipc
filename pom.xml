@@ -37,7 +37,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.version>1.4.10</kotlin.version>
         <kotlin.code.style>official</kotlin.code.style>
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.1</junit.version>
         <config.version>0.10.2</config.version>
         <retry.version>0.4.0</retry.version>
         <punner.version>0.9.16</punner.version>
