@@ -23,10 +23,15 @@ import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
 import io.netty.buffer.Unpooled
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlin.concurrent.thread
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class RetryTest {
@@ -47,11 +52,6 @@ class RetryTest {
             }
         }.use { server ->
             server.ignoreHeartbeat = true
-            thread {
-                Thread.sleep(2000)
-                server.ignoreHeartbeat = false
-                ignore = false
-            }
 
             client<String> {
                 config {
@@ -62,24 +62,27 @@ class RetryTest {
                     requestTimeoutMs = 2000
                 }
             }.use { client ->
+                val initConnection = client.getConnection()
+
                 val idempotentRequest = client.send(IdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
                 val nonIdempotentRequest = client.send(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
+
+                assertEquals(StatusCode.TIMEOUT, nonIdempotentRequest.get().status())
 
                 eventually(2000) {
                     assertFalse(client.isConnected())
                 }
 
-                assertEquals(StatusCode.TIMEOUT, nonIdempotentRequest.get().status())
+                server.ignoreHeartbeat = false
+                ignore = false
 
-                assertEquals(StatusCode.CONNECTION_ERROR, client.sendSync(NonIdempotentRequest("any"), PlainBody(Unpooled.EMPTY_BUFFER)).use { it.status() })
-
-                eventually(5000) {
+                eventually(2000) {
                     assertTrue(client.isConnected())
                 }
 
-                assertEquals(StatusCode.OK, idempotentRequest.get().status())
+                assertNotEquals(initConnection, client.getConnection())
 
-                assertEquals(StatusCode.OK, client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).use { it.status() })
+                assertEquals(StatusCode.OK, idempotentRequest.get().status())
             }
         }
     }

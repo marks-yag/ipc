@@ -23,16 +23,22 @@ import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody
 import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.ResponseHeader
+import com.github.yag.ipc.StatusCode
+import com.github.yag.ipc.status
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.withLock
 
 /**
  * The IPC Client class send messages to IPC server can execute callback when response was received.
@@ -51,7 +57,12 @@ class IPCClient<T : Any>(
 
     private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
 
+    private val currentCallId = AtomicLong()
+
+    @Volatile
     private var client: RawIPCClient<T>
+
+    private val lock = ReentrantReadWriteLock()
 
     val sessionId: String
 
@@ -61,16 +72,29 @@ class IPCClient<T : Any>(
                 try {
                     client.channel.closeFuture().await()
                     LOG.warn("Connection broken.")
-                    client.close()
 
-                    val uncompleted = client.getUncompletedRequests()
+                    lock.writeLock().withLock {
+                        client.close()
+                        val uncompleted = client.getUncompletedRequests()
 
-                    Thread.sleep(config.connectBackOff.baseIntervalMs)
-                    client = retry.call {
-                        RawIPCClient<T>(config, promptHandler, sessionId, metric, id)
-                    }.also {
-                        for (call in uncompleted) {
-                            it.send(call.request.type, call.request.packet, call.callback.func)
+                        Thread.sleep(config.connectBackOff.baseIntervalMs)
+                        client = try {
+                            retry.call {
+                                RawIPCClient<T>(config, promptHandler, sessionId, currentCallId, metric, id)
+                            }
+                        } catch (e: IOException) {
+                            LOG.warn("Connection recovery failed, make all pending calls fail.")
+                            for (call in uncompleted) {
+                                LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
+                                call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
+                            }
+                            throw e
+                        }.also {
+                            LOG.info("Connection recovered, re-send all pending calls.")
+                            for (call in uncompleted) {
+                                LOG.debug("Re-send {}.", call.request)
+                                it.send(call.request.type, call.request.packet, call.callback.func)
+                            }
                         }
                     }
                 } catch (e: InterruptedException) {
@@ -84,7 +108,7 @@ class IPCClient<T : Any>(
 
     init {
         client = retry.call {
-            RawIPCClient(config, promptHandler, null, metric, id)
+            RawIPCClient(config, promptHandler, null, currentCallId, metric, id)
         }
         sessionId = client.connection.sessionId
         monitor = Daemon("connection-monitor") {
@@ -99,7 +123,9 @@ class IPCClient<T : Any>(
      * @param callback code block to handle response packet
      */
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
-        client.send(type, body, callback)
+        lock.readLock().withLock {
+            client.send(type, body, callback)
+        }
     }
 
     /**
@@ -223,7 +249,9 @@ class IPCClient<T : Any>(
      */
     override fun close() {
         monitor.close()
-        client.close()
+        lock.readLock().withLock {
+            client.close()
+        }
     }
 
     /**
@@ -231,8 +259,19 @@ class IPCClient<T : Any>(
      * @return true is connected.
      */
     fun isConnected(): Boolean {
-        return client.isConnected()
+        val rl = lock.readLock()
+        return if (rl.tryLock()) {
+            try {
+                client.isConnected()
+            } finally {
+                rl.unlock()
+            }
+        } else {
+            false
+        }
     }
+
+    internal fun getConnection() = client.connection
 
     companion object {
         private val LOG: Logger = LoggerFactory.getLogger(IPCClient::class.java)

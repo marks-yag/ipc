@@ -75,6 +75,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
@@ -83,6 +84,7 @@ internal class RawIPCClient<T : Any>(
     private val config: IPCClientConfig,
     private val promptHandler: (Prompt) -> ByteArray,
     private val sessionId: String?,
+    private val currentCallId: AtomicLong,
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
@@ -98,8 +100,6 @@ internal class RawIPCClient<T : Any>(
     private val connectFuture: CompletableFuture<ConnectionAccepted>
 
     internal val channel: Channel
-
-    private var currentId = 0L
 
     private val queue = LinkedBlockingQueue<Request<T>>()
 
@@ -151,7 +151,6 @@ internal class RawIPCClient<T : Any>(
             }.applyChannelConfig(config.channel).handler(ChildChannelHandler())
         }
         closed.set(false)
-        currentId = 0L
 
         promptFuture = CompletableFuture()
         connectFuture = CompletableFuture()
@@ -227,7 +226,7 @@ internal class RawIPCClient<T : Any>(
         lock.withLock {
             val name = type.getName()
             val buf = body.data()
-            val header = RequestHeader(++currentId, name.toString(), buf.readableBytes())
+            val header = RequestHeader(currentCallId.incrementAndGet(), name.toString(), buf.readableBytes())
             buf.retain()
             val request = Packet(RequestPacketHeader(header), body)
 
@@ -242,29 +241,25 @@ internal class RawIPCClient<T : Any>(
         packet: Packet<RequestHeader>,
         callback: (Packet<ResponseHeader>) -> Any?
     ) {
-        if (!connected.get()) {
-            callback(packet.status(StatusCode.CONNECTION_ERROR))
-        } else {
-            val timestamp = System.currentTimeMillis()
-            val request = Request(type, packet, timestamp)
-            val header = packet.header.thrift
+        val timestamp = System.currentTimeMillis()
+        val request = Request(type, packet, timestamp)
+        val header = packet.header.thrift
 
-            blockTime.update(measureTimeMillis {
-                parallelCalls.acquire()
-                parallelRequestContentSize.acquire(header.contentLength)
-            })
+        blockTime.update(measureTimeMillis {
+            parallelCalls.acquire()
+            parallelRequestContentSize.acquire(header.contentLength)
+        })
 
-            val callId = header.callId
-            onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
+        val callId = header.callId
+        onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
 
-            queue.offer(request)
-            LOG.trace("Queued: {}.", request)
+        queue.offer(request)
+        LOG.trace("Queued: {}.", request)
 
-            val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
-            channel.eventLoop().schedule({
-                timeout(callId)
-            }, timeoutMs, TimeUnit.MILLISECONDS)
-        }
+        val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
+        channel.eventLoop().schedule({
+            timeout(callId)
+        }, timeoutMs, TimeUnit.MILLISECONDS)
     }
 
     private fun timeout(callId: Long) {
@@ -302,14 +297,6 @@ internal class RawIPCClient<T : Any>(
         if (closed.compareAndSet(false, true)) {
             addThreadName(id) {
                 LOG.info("IPC client closing...")
-                release()
-            }
-        }
-    }
-
-    private fun release() {
-        if (connected.compareAndSet(true, false)) {
-            addThreadName(id) {
                 flusher.close()
                 try {
                     channel.close().sync()
@@ -336,6 +323,7 @@ internal class RawIPCClient<T : Any>(
                     if (call.request.type.isIdempotent()) {
                         uncompleted.add(call)
                     } else {
+                        //TODO maybe connection error will be better.
                         call.doResponse(status(key, StatusCode.TIMEOUT))
                     }
                 }
@@ -348,6 +336,7 @@ internal class RawIPCClient<T : Any>(
     }
 
     fun isConnected(): Boolean {
+        LOG.debug("Check connection of: ${connection.connectionId}")
         return connected.get()
     }
 
@@ -426,7 +415,6 @@ internal class RawIPCClient<T : Any>(
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
             LOG.debug("Channel inactive.")
-            release()
         }
 
         override fun userEventTriggered(ctx: ChannelHandlerContext, event: Any) {

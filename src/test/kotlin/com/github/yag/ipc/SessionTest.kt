@@ -27,6 +27,7 @@ import io.netty.buffer.Unpooled
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -88,6 +89,7 @@ class SessionTest {
                     heartbeatTimeoutMs = 1000
                 }
             }.use { client ->
+                val initConnection = client.getConnection()
                 server.ignoreHeartbeat = true
                 eventually(2000) {
                     assertFalse(client.isConnected())
@@ -97,6 +99,7 @@ class SessionTest {
                 eventually(2000) {
                     assertTrue(client.isConnected())
                 }
+                assertNotEquals(initConnection, client.getConnection())
 
                 assertEquals(2, sessionIdList.size)
                 assertEquals(sessionIdList.first(), sessionIdList.last())
