@@ -172,7 +172,7 @@ internal class RawIPCClient<T : Any>(
             }
             succ = true
         } catch (e: InterruptedException) {
-            interrupt()
+            throw InterruptedException("Connect to ipc server timeout and interrupted.")
         } catch (e: ConnectException) {
             throw ConnectException(e.message) //make stack clear
         } catch (e: SocketException) {
@@ -180,11 +180,7 @@ internal class RawIPCClient<T : Any>(
         } finally {
             LOG.debug("Cleanup bootstrap threads.")
             if (!succ) {
-                try {
-                    bootstrap.config().group().shutdownGracefully().sync()
-                } catch (e: InterruptedException) {
-                    interrupt()
-                }
+                bootstrap.config().group().shutdownGracefully().sync()
             }
             LOG.debug("Cleanup bootstrap threads done.")
         }
@@ -379,7 +375,6 @@ internal class RawIPCClient<T : Any>(
 
     inner class ResponseHandler : ChannelInboundHandlerAdapter() {
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-            super.channelRead(ctx, msg)
             @Suppress("UNCHECKED_CAST")
             val packet = msg as Packet<ResponseHeader>
 
@@ -443,8 +438,6 @@ internal class RawIPCClient<T : Any>(
             LOG.error("Unknown exception.", cause)
         }
     }
-
-    private fun interrupt() : Nothing = throw InterruptedException("Connect to ipc server timeout and interrupted.")
 
     inner class ChildChannelHandler : ChannelInitializer<SocketChannel>() {
         override fun initChannel(channel: SocketChannel) {

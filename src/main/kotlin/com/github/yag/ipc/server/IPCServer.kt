@@ -260,7 +260,6 @@ class IPCServer internal constructor(
 
         @Suppress("unchecked_cast")
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-            super.channelRead(ctx, msg)
             val packet = msg as Packet<RequestHeader>
             val header = packet.header
             LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, header.thrift.callId)
