@@ -87,7 +87,8 @@ internal class RawIPCClient<T : Any>(
     private val sessionId: String?,
     private val currentCallId: AtomicLong,
     metric: MetricRegistry,
-    private val id: String
+    private val id: String,
+    private val channelInactive: () -> Unit
 ) : AutoCloseable {
 
     private val bootstrap: Bootstrap
@@ -100,7 +101,7 @@ internal class RawIPCClient<T : Any>(
 
     private val connectFuture: CompletableFuture<ConnectionAccepted>
 
-    internal val channel: Channel
+    private val channel: Channel
 
     private val queue = LinkedBlockingQueue<Request<T>>()
 
@@ -171,7 +172,7 @@ internal class RawIPCClient<T : Any>(
             }
             succ = true
         } catch (e: InterruptedException) {
-            throw InterruptedException("Connect to ipc server timeout and interrupted.")
+            interrupt()
         } catch (e: ConnectException) {
             throw ConnectException(e.message) //make stack clear
         } catch (e: SocketException) {
@@ -179,7 +180,11 @@ internal class RawIPCClient<T : Any>(
         } finally {
             LOG.debug("Cleanup bootstrap threads.")
             if (!succ) {
-                bootstrap.config().group().shutdownGracefully().sync()
+                try {
+                    bootstrap.config().group().shutdownGracefully().sync()
+                } catch (e: InterruptedException) {
+                    interrupt()
+                }
             }
             LOG.debug("Cleanup bootstrap threads done.")
         }
@@ -409,7 +414,8 @@ internal class RawIPCClient<T : Any>(
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
-            LOG.debug("Channel inactive.")
+            LOG.debug("Channel inactive: {}.", connection.connectionId)
+            channelInactive()
         }
 
         override fun userEventTriggered(ctx: ChannelHandlerContext, event: Any) {
@@ -437,6 +443,8 @@ internal class RawIPCClient<T : Any>(
             LOG.error("Unknown exception.", cause)
         }
     }
+
+    private fun interrupt() : Nothing = throw InterruptedException("Connect to ipc server timeout and interrupted.")
 
     inner class ChildChannelHandler : ChannelInitializer<SocketChannel>() {
         override fun initChannel(channel: SocketChannel) {

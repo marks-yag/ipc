@@ -36,7 +36,6 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
@@ -56,66 +55,23 @@ class IPCClient<T : Any>(
     private val id: String
 ) : AutoCloseable {
 
+    private val lock = ReentrantReadWriteLock()
+
     private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
 
     private val currentCallId = AtomicLong()
 
-    @Volatile
-    private var client: RawIPCClient<T>
+    private var monitor: Daemon<Monitor> = Daemon("connection-monitor") {
+        Monitor(it)
+    }.also { it.start() }
 
-    private val lock = ReentrantReadWriteLock()
-
-    val sessionId: String
-
-    inner class Monitor(private val shouldStop: AtomicBoolean) : Runnable {
-        override fun run() {
-            while (!shouldStop.get()) {
-                try {
-                    client.channel.closeFuture().await()
-                    LOG.warn("Connection broken.")
-
-                    lock.writeLock().withLock {
-                        client.close()
-                        val uncompleted = client.getUncompletedRequests()
-
-                        Thread.sleep(config.connectBackOff.baseIntervalMs)
-                        client = try {
-                            retry.call {
-                                RawIPCClient<T>(config, promptHandler, sessionId, currentCallId, metric, id)
-                            }
-                        } catch (e: IOException) {
-                            LOG.warn("Connection recovery failed, make all pending calls fail.")
-                            for (call in uncompleted) {
-                                LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
-                                call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
-                            }
-                            throw e
-                        }.also {
-                            LOG.info("Connection recovered, re-send all pending calls.")
-                            for (call in uncompleted) {
-                                LOG.debug("Re-send {}.", call.request)
-                                it.send(call.request.type, call.request.packet, call.callback.func)
-                            }
-                        }
-                    }
-                } catch (e: InterruptedException) {
-                }
-            }
+    private var client: RawIPCClient<T> = retry.call {
+        RawIPCClient(config, promptHandler, null, currentCallId, metric, id) {
+            monitor.runner.notifyInactive(this)
         }
-
     }
 
-    private var monitor: Daemon<Monitor>
-
-    init {
-        client = retry.call {
-            RawIPCClient(config, promptHandler, null, currentCallId, metric, id)
-        }
-        sessionId = client.connection.sessionId
-        monitor = Daemon("connection-monitor") {
-            Monitor(it)
-        }.also { it.start() }
-    }
+    val sessionId: String = client.connection.sessionId
 
     /**
      * Send request packet to server.
@@ -243,6 +199,35 @@ class IPCClient<T : Any>(
      */
     fun sendSync(type: RequestType<T>, data: ByteArray): Packet<ResponseHeader> {
         return send(type, Unpooled.wrappedBuffer(data)).get()
+    }
+
+    internal fun recovery() {
+        lock.writeLock().withLock {
+            client.close()
+            val uncompleted = client.getUncompletedRequests()
+
+            Thread.sleep(config.connectBackOff.baseIntervalMs)
+            client = try {
+                retry.call {
+                    RawIPCClient<T>(config, promptHandler, sessionId, currentCallId, metric, id) {
+                        monitor.runner.notifyInactive(this)
+                    }
+                }
+            } catch (e: IOException) {
+                LOG.warn("Connection recovery failed, make all pending calls fail.")
+                for (call in uncompleted) {
+                    LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
+                    call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
+                }
+                throw e
+            }.also {
+                LOG.info("Connection recovered, re-send all pending calls.")
+                for (call in uncompleted) {
+                    LOG.debug("Re-send {}.", call.request)
+                    it.send(call.request.type, call.request.packet, call.callback.func)
+                }
+            }
+        }
     }
 
     /**
