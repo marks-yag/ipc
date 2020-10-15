@@ -27,7 +27,7 @@
         </layout>
     </appender>
 
-    <logger name="com.github.yag" level="${log.level}" additivity="false">
+    <logger name="com.github.yag" level="${log.level:-DEBUG}" additivity="false">
         <appender-ref ref="STDOUT"/>
     </logger>
 
