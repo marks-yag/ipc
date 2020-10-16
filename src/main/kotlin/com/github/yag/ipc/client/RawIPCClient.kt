@@ -258,14 +258,13 @@ internal class RawIPCClient<T : Any>(
     private fun poll(): ArrayList<Packet<RequestHeader>> {
         val list = ArrayList<Packet<RequestHeader>>()
         var length = 0L
-        var request = queue.take()
 
-        var packet = request.packet
+        var packet = queue.take().packet
         list.add(packet)
         length += packet.body.data().readableBytes()
 
         while (true) {
-            request = queue.poll()
+            val request = queue.poll()
             if (request != null) {
                 packet = request.packet
                 list.add(packet)
