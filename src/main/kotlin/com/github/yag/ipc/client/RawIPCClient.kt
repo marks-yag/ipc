@@ -184,6 +184,10 @@ internal class RawIPCClient<T : Any>(
                     val start = System.currentTimeMillis()
 
                     list.forEach { packet ->
+                        val call = onTheFly[packet.header.thrift.callId]
+                        checkNotNull(call)
+                        call.sent = true
+
                         channel.write(packet).addListener {
                             sendTime.update(System.currentTimeMillis() - start)
                             parallelRequestContentSize.release(packet.header.thrift.contentLength)
@@ -303,11 +307,10 @@ internal class RawIPCClient<T : Any>(
                 onTheFly.remove(key)?.let { call ->
                     parallelCalls.release()
 
-                    if (call.request.type.isIdempotent()) {
+                    if (call.request.type.isIdempotent() || !call.sent) {
                         uncompleted.add(call)
                     } else {
-                        //TODO maybe connection error will be better.
-                        call.doResponse(status(key, StatusCode.TIMEOUT))
+                        call.doResponse(status(key, StatusCode.CONNECTION_ERROR))
                     }
                 }
             }

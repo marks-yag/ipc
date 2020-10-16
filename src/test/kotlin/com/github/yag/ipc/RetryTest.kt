@@ -67,7 +67,7 @@ class RetryTest {
                 val idempotentRequest = client.send(IdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
                 val nonIdempotentRequest = client.send(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
 
-                assertEquals(StatusCode.TIMEOUT, nonIdempotentRequest.get().status())
+                assertEquals(StatusCode.CONNECTION_ERROR, nonIdempotentRequest.get().status())
 
                 eventually(2000) {
                     assertFalse(client.isConnected())

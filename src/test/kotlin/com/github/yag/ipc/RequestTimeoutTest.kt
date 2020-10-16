@@ -100,7 +100,7 @@ class RequestTimeoutTest {
             server.close()
 
             val result = resultFuture.get(3, TimeUnit.SECONDS)
-            assertEquals(StatusCode.TIMEOUT, result.use { it.status() })
+            assertEquals(StatusCode.CONNECTION_ERROR, result.use { it.status() })
 
             assertFalse(client.isConnected())
         }
