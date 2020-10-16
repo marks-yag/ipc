@@ -52,9 +52,8 @@ class RequestTimeoutTest {
             }
         }
     }.use { server ->
-        client<Operation> {
+        client<Operation>(server.endpoint) {
             config {
-                endpoint = server.endpoint
                 requestTimeoutMs = 100L
             }
         }.use { client ->
@@ -88,9 +87,8 @@ class RequestTimeoutTest {
                 }
             }
         }
-        client<String> {
+        client<String>(server.endpoint) {
             config {
-                endpoint = server.endpoint
                 requestTimeoutMs = Long.MAX_VALUE
             }
         }.use { client ->

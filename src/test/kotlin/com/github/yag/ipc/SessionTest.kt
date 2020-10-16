@@ -58,11 +58,7 @@ class SessionTest {
                 })
             }
         }.use { server ->
-            client<String> {
-                config {
-                    endpoint = server.endpoint
-                }
-            }.use { client ->
+            client<String>(server.endpoint).use { client ->
                 assertNotNull(sessionId)
                 assertEquals(sessionId, client.sessionId)
 
@@ -83,9 +79,8 @@ class SessionTest {
                 }
             }
         }.use { server ->
-            client<String> {
+            client<String>(server.endpoint) {
                 config {
-                    endpoint = server.endpoint
                     heartbeatTimeoutMs = 1000
                 }
             }.use { client ->

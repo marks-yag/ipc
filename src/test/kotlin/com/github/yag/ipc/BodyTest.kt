@@ -34,11 +34,7 @@ class BodyTest {
                 }
             }
         }.use { server ->
-            client<String> {
-                config {
-                    endpoint = server.endpoint
-                }
-            }.use { client ->
+            client<String>(server.endpoint).use { client ->
                 val body = ThriftBody(User("yag", "123"))
                 client.sendSync(NonIdempotentRequest("foo"), body).let {
                     assertEquals(StatusCode.OK, it.status())

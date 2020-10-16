@@ -19,9 +19,10 @@ package com.github.yag.ipc.client
 
 import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.Prompt
+import java.net.InetSocketAddress
 import java.util.UUID
 
-class IPCClientBuilder<T: Any>(private val config: IPCClientConfig = IPCClientConfig()) {
+class IPCClientBuilder<T: Any>(private var endpoint: InetSocketAddress, val config: IPCClientConfig = IPCClientConfig()) {
 
     var promptHandler: (Prompt) -> ByteArray = {
         ByteArray(0)
@@ -40,7 +41,7 @@ class IPCClientBuilder<T: Any>(private val config: IPCClientConfig = IPCClientCo
     }
 
     fun build() : IPCClient<T> {
-        return IPCClient(config, promptHandler, metric, id)
+        return IPCClient(endpoint, config, promptHandler, metric, id)
     }
 
 }
@@ -52,10 +53,11 @@ class IPCClientBuilder<T: Any>(private val config: IPCClientConfig = IPCClientCo
  * @return created IPC client.
  */
 fun <T : Any> client(
+    endpoint: InetSocketAddress,
     config: IPCClientConfig = IPCClientConfig(),
-    init: IPCClientBuilder<T>.() -> Unit
+    init: IPCClientBuilder<T>.() -> Unit = {}
 ): IPCClient<T> {
-    val builder = IPCClientBuilder<T>(config)
+    val builder = IPCClientBuilder<T>(endpoint, config)
     builder.init()
     return builder.build()
 }

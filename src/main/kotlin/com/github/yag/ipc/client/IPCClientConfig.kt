@@ -26,9 +26,6 @@ import java.util.TreeMap
 
 class IPCClientConfig {
 
-    @Value(required = true)
-    lateinit var endpoint: InetSocketAddress
-
     @Value
     var threads: Int = 4
 

@@ -49,11 +49,7 @@ class BasicTest {
                 }
             }
         }.use { server ->
-            client<String> {
-                config {
-                    endpoint = server.endpoint
-                }
-            }.use { client ->
+            client<String>(server.endpoint).use { client ->
                 client.sendSync(NonIdempotentRequest("foo"), PlainBody.EMPTY).use {
                     assertEquals(StatusCode.OK, it.status())
                 }
@@ -75,11 +71,7 @@ class BasicTest {
                 }
             }
         }.use { server ->
-            client<String> {
-                config {
-                    endpoint = server.endpoint
-                }
-            }.use { client ->
+            client<String>(server.endpoint).use { client ->
                 assertEquals(1, requestData.refCnt())
                 client.sendSync(NonIdempotentRequest("any"), PlainBody(requestData)).use {
                     requestData.release()
@@ -109,11 +101,7 @@ class BasicTest {
                 }
             }
         }.use { server ->
-            client<String> {
-                config {
-                    endpoint = server.endpoint
-                }
-            }.use { client ->
+            client<String>(server.endpoint).use { client ->
                 val queue = LinkedBlockingQueue<Packet<ResponseHeader>>()
                 client.send(NonIdempotentRequest("foo"), PlainBody.EMPTY) {
                     queue.add(it)
@@ -169,11 +157,7 @@ class BasicTest {
                 }
             }
         }.use { server ->
-            client<String> {
-                config {
-                    endpoint = server.endpoint
-                }
-            }.use { client ->
+            client<String>(server.endpoint).use { client ->
                 val latch = CountDownLatch(10000)
                 repeat(10000) {
                     client.send(NonIdempotentRequest("foo"), PlainBody.EMPTY) {

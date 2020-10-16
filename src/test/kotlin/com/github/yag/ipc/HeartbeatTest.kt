@@ -40,9 +40,8 @@ class HeartbeatTest {
                 maxIdleTimeMs = 1000
             }
         }.use { server ->
-            client<String> {
+            client<String>(server.endpoint) {
                 config {
-                    endpoint = server.endpoint
                     heartbeatIntervalMs = 2000
                     heartbeatTimeoutMs = 10000
                     connectRetry.maxRetries = 0
@@ -65,9 +64,8 @@ class HeartbeatTest {
                 maxIdleTimeMs = 2000
             }
         }.use { server ->
-            client<String> {
+            client<String>(server.endpoint) {
                 config {
-                    endpoint = server.endpoint
                     heartbeatIntervalMs = 500
                     heartbeatTimeoutMs = 1000
                 }
@@ -91,9 +89,8 @@ class HeartbeatTest {
         server<String> {
         }.use { server ->
             server.ignoreHeartbeat = true
-            client<String> {
+            client<String>(server.endpoint) {
                 config {
-                    endpoint = server.endpoint
                     heartbeatIntervalMs = 500
                     heartbeatTimeoutMs = 2000
                     connectRetry.maxRetries = 0

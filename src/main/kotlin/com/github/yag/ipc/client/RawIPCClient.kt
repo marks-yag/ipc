@@ -63,6 +63,7 @@ import org.apache.thrift.transport.TIOStreamTransport
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
+import java.net.InetSocketAddress
 import java.net.SocketException
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
@@ -78,6 +79,7 @@ import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
 internal class RawIPCClient<T : Any>(
+    private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
     private val promptHandler: (Prompt) -> ByteArray,
     private val sessionId: String?,
@@ -139,7 +141,7 @@ internal class RawIPCClient<T : Any>(
 
         var succ = false
         try {
-            channel = bootstrap.connect(config.endpoint).sync().channel().also {
+            channel = bootstrap.connect(endpoint).sync().channel().also {
                 prompt = promptFuture.get()
 
                 val connectionRequest = ConnectRequest("V1", ByteBuffer.wrap(promptHandler(prompt)))

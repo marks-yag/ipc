@@ -53,9 +53,8 @@ class RetryTest {
         }.use { server ->
             server.ignoreHeartbeat = true
 
-            client<String> {
+            client<String>(server.endpoint) {
                 config {
-                    endpoint = server.endpoint
                     heartbeatIntervalMs = 500
                     heartbeatTimeoutMs = 1000
 

@@ -53,9 +53,8 @@ class ConnectTest {
             }
         }.use { server ->
             try {
-                client<String> {
+                client<String>(server.endpoint) {
                     config {
-                        endpoint = server.endpoint
                         connectRetry.maxRetries = 0
                     }
                 }
@@ -63,9 +62,8 @@ class ConnectTest {
             } catch (e: ConnectionRejectException) {
             }
 
-            client<String> {
+            client<String>(server.endpoint) {
                 config {
-                    endpoint = server.endpoint
                     headers["token"] = "foo"
                 }
             }.use { client ->
@@ -94,15 +92,12 @@ class ConnectTest {
                 }
             }
         }.use { server ->
-            client<String> {
+            client<String>(server.endpoint) {
                 prompt {
                     val body = ByteArray(5)
                     it.body.get(body)
                     assertEquals("hello", body.toString(Charsets.UTF_8))
                     "world".toByteArray(Charsets.UTF_8)
-                }
-                config {
-                    endpoint = server.endpoint
                 }
             }.use { client ->
                 client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).let {
@@ -124,9 +119,8 @@ class ConnectTest {
 
         val cost = measureTimeMillis {
             assertFailsWith<ConnectException> {
-                client<String> {
+                client<String>(server.endpoint) {
                     config {
-                        endpoint = server.endpoint
                         channel.connectionTimeoutMs = 1000
                         connectRetry.maxRetries = 1
                         connectRetry.maxTimeElapsedMs = 5000
@@ -148,11 +142,7 @@ class ConnectTest {
         val client = SettableFuture.create<IPCClient<String>>()
 
         val thread = thread {
-            client.set(client {
-                config {
-                    endpoint = server.endpoint
-                }
-            })
+            client.set(client(server.endpoint))
         }
 
         Thread.sleep(5000)

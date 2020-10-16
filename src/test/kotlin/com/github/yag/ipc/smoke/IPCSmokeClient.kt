@@ -30,6 +30,8 @@ import com.github.yag.retry.ExponentialBackOffPolicy
 import com.github.yag.retry.Retry
 import com.github.yag.retry.RetryPolicy
 import org.slf4j.LoggerFactory
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.time.Duration
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
@@ -43,6 +45,7 @@ object IPCSmokeClient {
     @JvmStatic
     fun main(args: Array<String>) {
         val config = Utils.getConfig(IPCSmokeClientConfig::class.java, configFile, args) ?: return
+        val endpoint = InetSocketAddress(InetAddress.getLocalHost(), 9527)
 
         val metric = MetricRegistry()
         val callMetric = metric.timer("call")
@@ -69,7 +72,7 @@ object IPCSmokeClient {
 
                 try {
                     retry.call {
-                        client<CallType>(config.ipc) {
+                        client<CallType>(endpoint, config.ipc) {
                             this.metric = metric
                             this.id = "ipc-client"
                         }

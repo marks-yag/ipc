@@ -18,6 +18,7 @@
 package com.github.yag.ipc.client
 
 import com.codahale.metrics.MetricRegistry
+import com.github.yag.config.Value
 import com.github.yag.ipc.Body
 import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
@@ -33,6 +34,7 @@ import io.netty.buffer.Unpooled
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
@@ -49,6 +51,7 @@ import kotlin.concurrent.withLock
  * @property id client id, will be used in log and thread name.
  */
 class IPCClient<T : Any>(
+    private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
     private val promptHandler: (Prompt) -> ByteArray,
     private val metric: MetricRegistry,
@@ -66,7 +69,7 @@ class IPCClient<T : Any>(
     }.also { it.start() }
 
     private var client: RawIPCClient<T> = retry.call {
-        RawIPCClient(config, promptHandler, null, currentCallId, metric, id) {
+        RawIPCClient(endpoint, config, promptHandler, null, currentCallId, metric, id) {
             monitor.runner.notifyInactive(this)
         }
     }
@@ -209,7 +212,7 @@ class IPCClient<T : Any>(
             Thread.sleep(config.connectBackOff.baseIntervalMs)
             client = try {
                 retry.call {
-                    RawIPCClient<T>(config, promptHandler, sessionId, currentCallId, metric, id) {
+                    RawIPCClient<T>(endpoint, config, promptHandler, sessionId, currentCallId, metric, id) {
                         monitor.runner.notifyInactive(this)
                     }
                 }
