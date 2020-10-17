@@ -19,15 +19,25 @@ package com.github.yag.ipc
 
 import com.github.yag.ipc.client.IdempotentRequest
 import com.github.yag.ipc.client.NonIdempotentRequest
+import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
 import io.netty.buffer.PooledByteBufAllocator
 import io.netty.buffer.Unpooled
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import java.util.concurrent.TimeUnit
 import kotlin.test.*
 
 class HeartbeatTest {
+
+    @AfterTest
+    fun after() {
+        assertEquals(0, ThreadContext.cache?.refCnt?:0)
+    }
 
     /**
      * Test in case of client can not write data in time:

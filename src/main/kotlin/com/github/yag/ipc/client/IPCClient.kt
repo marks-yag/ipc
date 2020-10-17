@@ -72,13 +72,23 @@ class IPCClient<T : Any>(
         Monitor(it)
     }.also { it.start() }
 
-    private var client: RawIPCClient<T> = retry.call {
-        RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, metric, id, timer) {
-            monitor.runner.notifyInactive(this)
+    private var client: RawIPCClient<T>
+
+    val sessionId: String
+
+    init {
+        try {
+            client = retry.call {
+                RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, metric, id, timer) {
+                    monitor.runner.notifyInactive(this)
+                }
+            }
+            sessionId = client.connection.sessionId
+        } catch (e: Exception) {
+            threadContext.release()
+            throw e
         }
     }
-
-    val sessionId: String = client.connection.sessionId
 
     /**
      * Send request packet to server.
