@@ -18,45 +18,18 @@
 package com.github.yag.ipc.client
 
 import com.github.yag.config.Value
-import com.github.yag.ipc.ChannelConfig
-import com.github.yag.retry.CountDownRetryPolicy
-import com.github.yag.retry.ExponentialBackOffPolicy
-import java.net.InetSocketAddress
-import java.util.TreeMap
 
-class IPCClientConfig {
+class ThreadContextConfig {
 
     @Value
-    var threads: Int = 4
+    var threads: Int = 0
 
     @Value
-    var maxResponsePacketSize: Int = 1024 * 1024 * 10
+    var maxParallelCalls: Int = 128
 
     @Value
-    var heartbeatIntervalMs: Long = 1000
-
-    @Value
-    var requestTimeoutMs: Long = 0
-
-    @Value
-    var heartbeatTimeoutMs: Long = 10_000
+    var maxParallelRequestContentSize: Int = 1024 * 1024 * 16
 
     @Value
     var maxWriteBatchSize: Int = 8192
-
-    @Value
-    var channel = ChannelConfig()
-
-    @Value
-    var headers = TreeMap<String, String>()
-
-    @Value
-    var connectRetry = CountDownRetryPolicy()
-
-    @Value
-    var connectBackOff = ExponentialBackOffPolicy()
-
-    @Value
-    var backOffRandomRange = 0.2
-
 }

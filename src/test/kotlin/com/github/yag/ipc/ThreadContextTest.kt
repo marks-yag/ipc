@@ -22,6 +22,7 @@ import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import io.netty.buffer.Unpooled
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -29,12 +30,9 @@ import kotlin.test.assertNotNull
 
 class ThreadContextTest {
 
-    @Test
-    fun setup() {
-        ThreadContext.cache?.let {
-            assertEquals(0, it.refCnt)
-        }
-        ThreadContext.cache = null
+    @AfterTest
+    fun after() {
+        assertEquals(0, ThreadContext.cache?.refCnt?:0)
     }
 
     @Test

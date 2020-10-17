@@ -18,12 +18,14 @@
 package com.github.yag.ipc
 
 import com.github.yag.ipc.client.NonIdempotentRequest
+import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.Connection
 import com.github.yag.ipc.server.RequestHandler
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
 import io.netty.buffer.Unpooled
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,6 +34,11 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class SessionTest {
+
+    @AfterTest
+    fun after() {
+        assertEquals(0, ThreadContext.cache?.refCnt?:0)
+    }
 
     @Test
     fun testSessionId() {

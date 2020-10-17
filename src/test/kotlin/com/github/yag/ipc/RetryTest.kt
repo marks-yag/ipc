@@ -19,6 +19,7 @@ package com.github.yag.ipc
 
 import com.github.yag.ipc.client.IdempotentRequest
 import com.github.yag.ipc.client.NonIdempotentRequest
+import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
@@ -26,6 +27,7 @@ import io.netty.buffer.Unpooled
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import kotlin.concurrent.thread
+import kotlin.test.AfterTest
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,6 +37,11 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class RetryTest {
+
+    @AfterTest
+    fun after() {
+        assertEquals(0, ThreadContext.cache?.refCnt?:0)
+    }
 
     /**
      * Test client can reconnect to server and make remote calls.

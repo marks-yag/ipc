@@ -17,17 +17,24 @@
 
 package com.github.yag.ipc.client
 
+import com.github.yag.config.ConfigLoader
+import com.github.yag.config.Configuration
 import io.netty.channel.EventLoopGroup
-import org.slf4j.LoggerFactory
-import java.lang.NumberFormatException
+import java.io.IOException
+import java.util.Properties
 import java.util.Timer
+import java.util.concurrent.Semaphore
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class ThreadContext private constructor(private val threads: Int, val timer: Timer = Timer(true), val eventLoop: EventLoopGroup = PlatformEventLoopGroup(threads).instance) {
+class ThreadContext private constructor(private val config: ThreadContextConfig, val timer: Timer = Timer(true), val eventLoop: EventLoopGroup = PlatformEventLoopGroup(config.threads).instance) {
 
     var refCnt = 1
         private set
+
+    internal val parallelCalls = Semaphore(config.maxParallelCalls)
+
+    internal val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
 
     fun retain() : ThreadContext {
         return lock.withLock {
@@ -50,10 +57,6 @@ class ThreadContext private constructor(private val threads: Int, val timer: Tim
 
     companion object {
 
-        private val LOG = LoggerFactory.getLogger(ThreadContext::class.java)
-
-        private const val IPC_CLIENT_THREADS = "ipc.client.threads"
-
         private val lock = ReentrantLock()
 
         internal var cache: ThreadContext? = null
@@ -62,7 +65,7 @@ class ThreadContext private constructor(private val threads: Int, val timer: Tim
             return lock.withLock {
                 var c = cache
                 if (c == null || c.refCnt == 0) {
-                    c = ThreadContext(getThreads())
+                    c = ThreadContext(getConfig())
                     cache = c
                 } else {
                     c.retain()
@@ -71,15 +74,13 @@ class ThreadContext private constructor(private val threads: Int, val timer: Tim
             }
         }
 
-        private fun getThreads() : Int {
-            val threads = try {
-                System.getProperty(IPC_CLIENT_THREADS, "${Runtime.getRuntime().availableProcessors()}").toInt()
-            } catch (e: NumberFormatException) {
-                LOG.warn("Invalid property: {}.", IPC_CLIENT_THREADS, e)
-                Runtime.getRuntime().availableProcessors()
+        private fun getConfig() : ThreadContextConfig {
+            val prop = try {
+                ConfigLoader.load("ipc.client.thread.context.conf")
+            } catch (e: IOException) {
+                Properties()
             }
-            LOG.info("Default ThreadContext threads: {}.", threads)
-            return threads
+            return Configuration(prop).get(ThreadContextConfig::class.java)
         }
 
     }

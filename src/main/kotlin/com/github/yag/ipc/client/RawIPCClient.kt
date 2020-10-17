@@ -109,10 +109,6 @@ internal class RawIPCClient<T : Any>(
 
     private val flusher: Daemon<*>
 
-    private val parallelCalls = Semaphore(config.maxParallelCalls)
-
-    private val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
-
     private val onTheFly = ConcurrentSkipListMap<Long, OnTheFly<T>>()
 
     private val uncompleted = ArrayList<OnTheFly<T>>()
@@ -157,12 +153,13 @@ internal class RawIPCClient<T : Any>(
                 it.writeAndFlush(connectionRequest)
                 lastContact = System.currentTimeMillis()
             }
-        } catch (e: InterruptedException) {
-            throw InterruptedException("Connect to ipc server timeout and interrupted.")
-        } catch (e: ConnectException) {
-            throw ConnectException(e.message) //make stack clear
-        } catch (e: SocketException) {
-            throw SocketException(e.message)
+        } catch (e: Exception) {
+            when (e) {
+                is InterruptedException -> throw InterruptedException("Connect to ipc server timeout and interrupted.")
+                is ConnectException -> throw ConnectException(e.message) //make stack clear
+                is SocketException -> throw SocketException(e.message)
+                else -> throw e
+            }
         }
 
         LOG.debug("New ipc client created.")
@@ -188,12 +185,12 @@ internal class RawIPCClient<T : Any>(
 
                         channel.write(packet).addListener {
                             sendTime.update(System.currentTimeMillis() - start)
-                            parallelRequestContentSize.release(packet.header.thrift.contentLength)
+                            threadContext.parallelRequestContentSize.release(packet.header.thrift.contentLength)
                             if (LOG.isTraceEnabled) {
                                 LOG.trace(
                                     "Released {} then {}.",
                                     packet.header.thrift.contentLength,
-                                    parallelRequestContentSize.availablePermits()
+                                    threadContext.parallelRequestContentSize.availablePermits()
                                 )
                             }
                         }
@@ -231,8 +228,8 @@ internal class RawIPCClient<T : Any>(
         val header = packet.header.thrift
 
         blockTime.update(measureTimeMillis {
-            parallelCalls.acquire()
-            parallelRequestContentSize.acquire(header.contentLength)
+            threadContext.parallelCalls.acquire()
+            threadContext.parallelRequestContentSize.acquire(header.contentLength)
         })
 
         val callId = header.callId
@@ -305,7 +302,7 @@ internal class RawIPCClient<T : Any>(
         cbLock.withLock {
             onTheFly.keys.forEach { key ->
                 onTheFly[key]?.let { call ->
-                    parallelCalls.release()
+                    threadContext.parallelCalls.release()
                     if (call.request.type.isIdempotent() || !call.sent) {
                         uncompleted.add(call)
                     } else {
@@ -380,7 +377,7 @@ internal class RawIPCClient<T : Any>(
                 if (header.thrift.statusCode != StatusCode.PARTIAL_CONTENT) {
                     it.request.packet.close()
                     onTheFly.remove(header.thrift.callId)
-                    parallelCalls.release()
+                    threadContext.parallelCalls.release()
                 } else {
                     it.callback.lastContactTimestamp = System.currentTimeMillis()
                     LOG.trace(

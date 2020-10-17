@@ -19,6 +19,7 @@ package com.github.yag.ipc
 
 import com.github.yag.ipc.client.IPCClient
 import com.github.yag.ipc.client.NonIdempotentRequest
+import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.google.common.util.concurrent.SettableFuture
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory
 import java.net.ConnectException
 import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -35,6 +37,11 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 class ConnectTest {
+
+    @AfterTest
+    fun after() {
+        assertEquals(0, ThreadContext.cache?.refCnt?:0)
+    }
 
     @Test
     fun testConnectionHandler() {
