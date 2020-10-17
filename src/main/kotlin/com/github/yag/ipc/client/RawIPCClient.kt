@@ -83,6 +83,7 @@ import kotlin.system.measureTimeMillis
 internal class RawIPCClient<T : Any>(
     private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
+    private val threadContext: ThreadContext,
     private val promptHandler: (Prompt) -> ByteArray,
     private val sessionId: String?,
     private val currentCallId: AtomicLong,
@@ -133,7 +134,7 @@ internal class RawIPCClient<T : Any>(
     init {
         bootstrap = Bootstrap().apply {
             channel(CHANNEL_CLASS)
-            group(PlatformEventLoopGroup(config.threads).instance)
+            group(threadContext.eventLoop)
             applyChannelConfig(config.channel)
             handler(ChildChannelHandler())
         }
@@ -142,7 +143,6 @@ internal class RawIPCClient<T : Any>(
         promptFuture = CompletableFuture()
         connectFuture = CompletableFuture()
 
-        var succ = false
         try {
             channel = bootstrap.connect(endpoint).sync().channel().also {
                 prompt = promptFuture.get()
@@ -157,19 +157,12 @@ internal class RawIPCClient<T : Any>(
                 it.writeAndFlush(connectionRequest)
                 lastContact = System.currentTimeMillis()
             }
-            succ = true
         } catch (e: InterruptedException) {
             throw InterruptedException("Connect to ipc server timeout and interrupted.")
         } catch (e: ConnectException) {
             throw ConnectException(e.message) //make stack clear
         } catch (e: SocketException) {
             throw SocketException(e.message)
-        } finally {
-            LOG.debug("Cleanup bootstrap threads.")
-            if (!succ) {
-                bootstrap.config().group().shutdownGracefully().sync()
-            }
-            LOG.debug("Cleanup bootstrap threads done.")
         }
 
         LOG.debug("New ipc client created.")
@@ -301,7 +294,6 @@ internal class RawIPCClient<T : Any>(
                 } catch (e: Exception) {
                     LOG.warn("Close channel failed.")
                 }
-                channel.eventLoop().shutdownGracefully()
 
                 LOG.info("IPC client closed, make all pending requests timeout.")
                 handlePendingRequests()
