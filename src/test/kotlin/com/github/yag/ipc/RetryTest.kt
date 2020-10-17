@@ -90,7 +90,7 @@ class RetryTest {
     fun testCallTimeoutWhenClientReconnectFailed() {
         server<String> {
             request {
-                set("foo") { _, request, echo ->
+                set("foo") { _, _, _ ->
                 }
             }
         }.use { server ->

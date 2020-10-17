@@ -22,6 +22,7 @@ import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelOption
 import io.netty.channel.WriteBufferWaterMark
+import java.util.Timer
 
 internal fun <T : AbstractBootstrap<*, *>> T.applyChannelConfig(config: ChannelConfig): T {
     option(ChannelOption.CONNECT_TIMEOUT_MILLIS, minOf(config.connectionTimeoutMs, Int.MAX_VALUE.toLong()).toInt())

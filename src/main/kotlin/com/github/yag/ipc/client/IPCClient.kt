@@ -54,6 +54,7 @@ import kotlin.concurrent.withLock
 class IPCClient<T : Any>(
     private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
+    private val threadContext: ThreadContext,
     private val promptHandler: (Prompt) -> ByteArray,
     private val metric: MetricRegistry,
     private val id: String
@@ -63,7 +64,7 @@ class IPCClient<T : Any>(
 
     private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
 
-    private val timer = Timer(true)
+    private val timer = threadContext.timer
 
     private val currentCallId = AtomicLong()
 
@@ -72,7 +73,7 @@ class IPCClient<T : Any>(
     }.also { it.start() }
 
     private var client: RawIPCClient<T> = retry.call {
-        RawIPCClient(endpoint, config, promptHandler, null, currentCallId, metric, id, timer) {
+        RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, metric, id, timer) {
             monitor.runner.notifyInactive(this)
         }
     }
@@ -215,7 +216,7 @@ class IPCClient<T : Any>(
             Thread.sleep(config.connectBackOff.baseIntervalMs)
             client = try {
                 retry.call {
-                    RawIPCClient<T>(endpoint, config, promptHandler, sessionId, currentCallId, metric, id, timer) {
+                    RawIPCClient<T>(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, metric, id, timer) {
                         monitor.runner.notifyInactive(this)
                     }
                 }
@@ -244,7 +245,7 @@ class IPCClient<T : Any>(
         lock.readLock().withLock {
             client.close()
         }
-        timer.cancel()
+        threadContext.release()
     }
 
     /**
