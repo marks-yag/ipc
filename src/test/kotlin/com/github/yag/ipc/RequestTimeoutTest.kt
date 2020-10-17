@@ -17,6 +17,7 @@
 
 package com.github.yag.ipc
 
+import com.github.yag.ipc.client.IdempotentRequest
 import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.RequestType
 import com.github.yag.ipc.client.client
@@ -73,11 +74,6 @@ class RequestTimeoutTest {
         }
     }
 
-    /**
-     * Test in case of server close before response to client, client can:
-     * 1. Detect server was closed.
-     * 2. Let pending requests timeout.
-     */
     @Test
     fun testServerClose() {
         val server = server<String> {
@@ -89,16 +85,16 @@ class RequestTimeoutTest {
         }
         client<String>(server.endpoint) {
             config {
-                requestTimeoutMs = Long.MAX_VALUE
+                requestTimeoutMs = 2000
             }
         }.use { client ->
             assertTrue(client.isConnected())
 
-            val resultFuture = client.send(NonIdempotentRequest("ignore"), PlainBody.EMPTY)
+            val resultFuture = client.send(IdempotentRequest("ignore"), PlainBody.EMPTY)
             server.close()
 
             val result = resultFuture.get(3, TimeUnit.SECONDS)
-            assertEquals(StatusCode.CONNECTION_ERROR, result.use { it.status() })
+            assertEquals(StatusCode.TIMEOUT, result.use { it.status() })
 
             assertFalse(client.isConnected())
         }

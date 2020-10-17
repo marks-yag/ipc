@@ -57,7 +57,7 @@ class IPCServerBuilder<T : Any>(
 
 fun <T : Any> server(
     config: IPCServerConfig = IPCServerConfig(),
-    init: IPCServerBuilder<T>.() -> Unit
+    init: IPCServerBuilder<T>.() -> Unit = {}
 ): IPCServer {
     val builder = IPCServerBuilder<T>(config)
     builder.init()

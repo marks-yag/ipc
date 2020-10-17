@@ -40,7 +40,7 @@ class RetryTest {
      * Test client can reconnect to server and make remote calls.
      */
     @Test
-    fun testCallRetryWithClientReconnect() {
+    fun testCallRetrySuccessWhenClientReconnect() {
         var ignore = true
         server<String> {
             request {
@@ -58,7 +58,7 @@ class RetryTest {
                     heartbeatIntervalMs = 500
                     heartbeatTimeoutMs = 1000
 
-                    requestTimeoutMs = 2000
+                    requestTimeoutMs = 4000
                 }
             }.use { client ->
                 val initConnection = client.getConnection()
@@ -82,6 +82,28 @@ class RetryTest {
                 assertNotEquals(initConnection, client.getConnection())
 
                 assertEquals(StatusCode.OK, idempotentRequest.get().status())
+            }
+        }
+    }
+
+    @Test
+    fun testCallTimeoutWhenClientReconnectFailed() {
+        server<String> {
+            request {
+                set("foo") { _, request, echo ->
+                }
+            }
+        }.use { server ->
+            client<String>(server.endpoint) {
+                config {
+                    requestTimeoutMs = 2000
+                    connectRetry.maxTimeElapsedMs = 3000
+                }
+            }.use { client ->
+                val idempotentRequest = client.send(IdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
+                server.close()
+
+                assertEquals(StatusCode.TIMEOUT, idempotentRequest.get().status())
             }
         }
     }

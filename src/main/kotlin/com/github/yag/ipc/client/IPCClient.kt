@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
+import java.util.Timer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicLong
@@ -62,6 +63,8 @@ class IPCClient<T : Any>(
 
     private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
 
+    private val timer = Timer()
+
     private val currentCallId = AtomicLong()
 
     private var monitor: Daemon<Monitor> = Daemon("connection-monitor") {
@@ -69,7 +72,7 @@ class IPCClient<T : Any>(
     }.also { it.start() }
 
     private var client: RawIPCClient<T> = retry.call {
-        RawIPCClient(endpoint, config, promptHandler, null, currentCallId, metric, id) {
+        RawIPCClient(endpoint, config, promptHandler, null, currentCallId, metric, id, timer) {
             monitor.runner.notifyInactive(this)
         }
     }
@@ -204,7 +207,7 @@ class IPCClient<T : Any>(
         return send(type, Unpooled.wrappedBuffer(data)).get()
     }
 
-    internal fun recovery() {
+    internal fun recover() {
         lock.writeLock().withLock {
             client.close()
             val uncompleted = client.getUncompletedRequests()
@@ -212,7 +215,7 @@ class IPCClient<T : Any>(
             Thread.sleep(config.connectBackOff.baseIntervalMs)
             client = try {
                 retry.call {
-                    RawIPCClient<T>(endpoint, config, promptHandler, sessionId, currentCallId, metric, id) {
+                    RawIPCClient<T>(endpoint, config, promptHandler, sessionId, currentCallId, metric, id, timer) {
                         monitor.runner.notifyInactive(this)
                     }
                 }
@@ -241,6 +244,7 @@ class IPCClient<T : Any>(
         lock.readLock().withLock {
             client.close()
         }
+        timer.cancel()
     }
 
     /**

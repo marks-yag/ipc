@@ -66,6 +66,8 @@ import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.SocketException
 import java.nio.ByteBuffer
+import java.util.Timer
+import java.util.TimerTask
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.ExecutionException
@@ -86,6 +88,7 @@ internal class RawIPCClient<T : Any>(
     private val currentCallId: AtomicLong,
     metric: MetricRegistry,
     private val id: String,
+    private val timer: Timer,
     private val channelInactive: () -> Unit
 ) : AutoCloseable {
 
@@ -243,16 +246,23 @@ internal class RawIPCClient<T : Any>(
         onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
 
         queue.offer(request)
-        LOG.trace("Queued: {}.", request)
 
         val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
-        channel.eventLoop().schedule({
-            timeout(callId)
-        }, timeoutMs, TimeUnit.MILLISECONDS)
+
+        LOG.trace("Queued: {}, timeout: {}.", request, timeoutMs)
+
+        if (timeoutMs > 0) {
+            timer.schedule(object : TimerTask() {
+                override fun run() {
+                    timeout(callId)
+                }
+            }, timeoutMs)
+        }
     }
 
     private fun timeout(callId: Long) {
         onTheFly.remove(callId)?.let {
+            LOG.debug("Timeout: {}.", callId)
             it.doResponse(status(callId, StatusCode.TIMEOUT))
         }
     }
@@ -305,13 +315,14 @@ internal class RawIPCClient<T : Any>(
     private fun handlePendingRequests() {
         cbLock.withLock {
             onTheFly.keys.forEach { key ->
-                onTheFly.remove(key)?.let { call ->
+                onTheFly[key]?.let { call ->
                     parallelCalls.release()
-
                     if (call.request.type.isIdempotent() || !call.sent) {
                         uncompleted.add(call)
                     } else {
-                        call.doResponse(status(key, StatusCode.CONNECTION_ERROR))
+                        onTheFly.remove(key)?.let {
+                            it.doResponse(status(key, StatusCode.CONNECTION_ERROR))
+                        }
                     }
                 }
             }

@@ -36,7 +36,7 @@ class IPCClientConfig {
     var heartbeatIntervalMs: Long = 1000
 
     @Value
-    var requestTimeoutMs: Long = Long.MAX_VALUE
+    var requestTimeoutMs: Long = 0
 
     @Value
     var heartbeatTimeoutMs: Long = 10_000
