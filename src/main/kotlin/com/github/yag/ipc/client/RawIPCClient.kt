@@ -125,8 +125,6 @@ internal class RawIPCClient<T : Any>(
 
     private val batchSize = metric.histogram("ipc-client-batch-size")
 
-    private val sendTime = metric.histogram("ipc-client-send-time")
-
     init {
         bootstrap = Bootstrap().apply {
             channel(CHANNEL_CLASS)
@@ -176,24 +174,11 @@ internal class RawIPCClient<T : Any>(
                     val list = poll()
                     batchSize.update(list.size)
 
-                    val start = System.currentTimeMillis()
-
                     list.forEach { packet ->
                         val call = onTheFly[packet.header.thrift.callId]
                         checkNotNull(call)
                         call.sent = true
-
-                        channel.write(packet).addListener {
-                            sendTime.update(System.currentTimeMillis() - start)
-                            threadContext.parallelRequestContentSize.release(packet.header.thrift.contentLength)
-                            if (LOG.isTraceEnabled) {
-                                LOG.trace(
-                                    "Released {} then {}.",
-                                    packet.header.thrift.contentLength,
-                                    threadContext.parallelRequestContentSize.availablePermits()
-                                )
-                            }
-                        }
+                        write(packet)
                     }
 
                     channel.flush()
@@ -247,6 +232,19 @@ internal class RawIPCClient<T : Any>(
                     timeout(callId)
                 }
             }, timeoutMs)
+        }
+    }
+
+    private fun write(packet: Packet<RequestHeader>) {
+        channel.write(packet).addListener {
+            threadContext.parallelRequestContentSize.release(packet.header.thrift.contentLength)
+            if (LOG.isTraceEnabled) {
+                LOG.trace(
+                    "Released {} then {}.",
+                    packet.header.thrift.contentLength,
+                    threadContext.parallelRequestContentSize.availablePermits()
+                )
+            }
         }
     }
 
