@@ -22,8 +22,6 @@ import com.github.yag.ipc.ResponseHeader
 
 internal class OnTheFly<T>(val request: Request<T>, val callback: Callback) {
 
-    var sent = false
-
     fun doResponse(response: Packet<ResponseHeader>) {
         request.packet.use {
             callback.func(response)

@@ -177,7 +177,6 @@ internal class RawIPCClient<T : Any>(
                     list.forEach { packet ->
                         val call = onTheFly[packet.header.thrift.callId]
                         checkNotNull(call)
-                        call.sent = true
                         write(packet)
                     }
 
@@ -301,7 +300,7 @@ internal class RawIPCClient<T : Any>(
             onTheFly.keys.forEach { key ->
                 onTheFly[key]?.let { call ->
                     threadContext.parallelCalls.release()
-                    if (call.request.type.isIdempotent() || !call.sent) {
+                    if (call.request.type.isIdempotent()) {
                         uncompleted.add(call)
                     } else {
                         onTheFly.remove(key)?.let {
