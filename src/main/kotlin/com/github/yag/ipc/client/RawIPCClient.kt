@@ -407,7 +407,7 @@ internal class RawIPCClient<T : Any>(
                         LOG.debug("Send heartbeat.")
                         ctx.channel().writeAndFlush(
                             Packet.requestHeartbeat
-                        ).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
+                        ).addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
                     }
                 }
             }
