@@ -173,14 +173,7 @@ internal class RawIPCClient<T : Any>(
                 try {
                     val list = poll()
                     batchSize.update(list.size)
-
-                    list.forEach { packet ->
-                        val call = onTheFly[packet.header.thrift.callId]
-                        checkNotNull(call)
-                        write(packet)
-                    }
-
-                    channel.flush()
+                    writeAndFlush(list)
                 } catch (e: InterruptedException) {
                     //:~
                 }
@@ -232,6 +225,17 @@ internal class RawIPCClient<T : Any>(
                 }
             }, timeoutMs)
         }
+    }
+
+    private fun flush() {
+        channel.flush()
+    }
+
+    private fun writeAndFlush(packets: List<Packet<RequestHeader>>) {
+        for (packet in packets) {
+            write(packet)
+        }
+        flush()
     }
 
     private fun write(packet: Packet<RequestHeader>) {
