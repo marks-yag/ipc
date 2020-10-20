@@ -25,7 +25,6 @@ import com.github.yag.ipc.Utils
 import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.isSuccessful
-import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.CountDownLatch

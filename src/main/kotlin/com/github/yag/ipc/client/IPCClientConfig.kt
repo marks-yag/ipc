@@ -21,7 +21,6 @@ import com.github.yag.config.Value
 import com.github.yag.ipc.ChannelConfig
 import com.github.yag.retry.CountDownRetryPolicy
 import com.github.yag.retry.ExponentialBackOffPolicy
-import java.net.InetSocketAddress
 import java.util.TreeMap
 
 class IPCClientConfig {

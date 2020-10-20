@@ -23,7 +23,6 @@ import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejectException
 import com.github.yag.ipc.ConnectionResponse
-import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PacketCodec
 import com.github.yag.ipc.PacketEncoder
@@ -36,7 +35,6 @@ import com.github.yag.ipc.StatusCode
 import com.github.yag.ipc.TEncoder
 import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
-import com.github.yag.ipc.daemon
 import com.github.yag.ipc.status
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
@@ -69,10 +67,7 @@ import java.nio.ByteBuffer
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.ExecutionException
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -81,6 +76,7 @@ import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
 internal class RawIPCClient<T : Any>(
+    private val client: IPCClient<T>,
     private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
     private val threadContext: ThreadContext,
@@ -105,10 +101,6 @@ internal class RawIPCClient<T : Any>(
     private val connectFuture: CompletableFuture<ConnectionAccepted>
 
     private val channel: Channel
-
-    private val queue = LinkedBlockingQueue<Request<T>>()
-
-    private val flusher: Daemon<*>
 
     private var lastContact: Long = 0L
 
@@ -164,18 +156,6 @@ internal class RawIPCClient<T : Any>(
         } catch (e: ExecutionException) {
             throw e.cause ?: e
         }
-
-        flusher = daemon("flusher-$id") { shouldStop ->
-            while (!shouldStop.get()) {
-                try {
-                    val list = poll()
-                    batchSize.update(list.size)
-                    writeAndFlush(list)
-                } catch (e: InterruptedException) {
-                    //:~
-                }
-            }
-        }.apply { start() }
     }
 
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
@@ -209,7 +189,7 @@ internal class RawIPCClient<T : Any>(
         val callId = header.callId
         onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
 
-        queue.offer(request)
+        threadContext.queue.offer(Call(client, request))
 
         val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
 
@@ -228,7 +208,7 @@ internal class RawIPCClient<T : Any>(
         channel.flush()
     }
 
-    private fun writeAndFlush(packets: List<Packet<RequestHeader>>) {
+    internal fun writeAndFlush(packets: List<Packet<RequestHeader>>) {
         for (packet in packets) {
             write(packet)
         }
@@ -255,35 +235,10 @@ internal class RawIPCClient<T : Any>(
         }
     }
 
-    private fun poll(): ArrayList<Packet<RequestHeader>> {
-        val list = ArrayList<Packet<RequestHeader>>()
-        var length = 0L
-
-        var packet = queue.take().packet
-        list.add(packet)
-        length += packet.body.data().readableBytes()
-
-        while (true) {
-            val request = queue.poll()
-            if (request != null) {
-                packet = request.packet
-                list.add(packet)
-                length += packet.body.data().readableBytes()
-                if (length >= config.maxWriteBatchSize) {
-                    break
-                }
-            } else {
-                break
-            }
-        }
-        return list
-    }
-
     override fun close() {
         if (closed.compareAndSet(false, true)) {
             addThreadName(id) {
                 LOG.info("IPC client closing...")
-                flusher.close()
                 try {
                     channel.close().sync()
                 } catch (e: Exception) {
