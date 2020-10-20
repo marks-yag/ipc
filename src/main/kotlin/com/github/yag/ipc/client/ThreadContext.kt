@@ -19,10 +19,15 @@ package com.github.yag.ipc.client
 
 import com.github.yag.config.ConfigLoader
 import com.github.yag.config.Configuration
+import com.github.yag.ipc.Daemon
+import com.github.yag.ipc.Packet
+import com.github.yag.ipc.RequestHeader
+import com.github.yag.ipc.daemon
 import io.netty.channel.EventLoopGroup
 import java.io.IOException
 import java.util.Properties
 import java.util.Timer
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Semaphore
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -32,9 +37,54 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
     var refCnt = 1
         private set
 
+    internal val queue = LinkedBlockingQueue<Call<*>>()
+
+    internal var left: Call<*>? = null
+
+    internal val flusher: Daemon<*> = daemon("flusher") { shouldStop ->
+        while (!shouldStop.get()) {
+            try {
+                val batch = poll()
+                batch.first.writeAndFlush(batch.second)
+            } catch (e: InterruptedException) {
+                //:~
+            }
+        }
+    }.apply { start() }
+
     internal val parallelCalls = Semaphore(config.maxParallelCalls)
 
     internal val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
+
+    private fun poll(): Pair<IPCClient<*>, ArrayList<Packet<RequestHeader>>> {
+        val list = ArrayList<Packet<RequestHeader>>()
+        var length = 0L
+
+        val call = left?:queue.take()
+        var packet = call.request.packet
+        val client = call.client
+        list.add(packet)
+        length += packet.body.data().readableBytes()
+
+        while (true) {
+            val call = queue.poll()
+            if (call != null) {
+                if (call.client == client) {
+                    packet = call.request.packet
+                    list.add(packet)
+                    length += packet.body.data().readableBytes()
+                    if (length >= config.maxWriteBatchSize) {
+                        break
+                    }
+                } else {
+                    left = call
+                }
+            } else {
+                break
+            }
+        }
+        return client to list
+    }
 
     fun retain() : ThreadContext {
         return lock.withLock {
@@ -51,6 +101,7 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
             if (refCnt == 0) {
                 eventLoop.shutdownGracefully()
             }
+            flusher.close()
             this
         }
     }

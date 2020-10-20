@@ -18,12 +18,12 @@
 package com.github.yag.ipc.client
 
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.config.Value
 import com.github.yag.ipc.Body
 import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody
 import com.github.yag.ipc.Prompt
+import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.StatusCode
 import com.github.yag.ipc.status
@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import java.util.Timer
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.Future
@@ -82,7 +81,7 @@ class IPCClient<T : Any>(
     init {
         try {
             client = retry.call {
-                RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, onTheFly, metric, id, timer) {
+                RawIPCClient(this, endpoint, config, threadContext, promptHandler, null, currentCallId, onTheFly, metric, id, timer) {
                     monitor.runner.notifyInactive(this)
                 }
             }
@@ -221,6 +220,12 @@ class IPCClient<T : Any>(
         return send(type, Unpooled.wrappedBuffer(data)).get()
     }
 
+    internal fun writeAndFlush(packets: List<Packet<RequestHeader>>) {
+        lock.readLock().withLock {
+            client.writeAndFlush(packets)
+        }
+    }
+
     internal fun recover() {
         lock.writeLock().withLock {
             client.close()
@@ -228,7 +233,7 @@ class IPCClient<T : Any>(
             Thread.sleep(config.connectBackOff.baseIntervalMs)
             client = try {
                 retry.call {
-                    RawIPCClient<T>(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, onTheFly, metric, id, timer) {
+                    RawIPCClient<T>(this, endpoint, config, threadContext, promptHandler, sessionId, currentCallId, onTheFly, metric, id, timer) {
                         monitor.runner.notifyInactive(this)
                     }
                 }

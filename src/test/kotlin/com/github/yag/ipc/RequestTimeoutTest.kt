@@ -18,7 +18,6 @@
 package com.github.yag.ipc
 
 import com.github.yag.ipc.client.IdempotentRequest
-import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.RequestType
 import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
