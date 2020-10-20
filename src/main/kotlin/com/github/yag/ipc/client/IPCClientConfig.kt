@@ -27,9 +27,6 @@ import java.util.TreeMap
 class IPCClientConfig {
 
     @Value
-    var threads: Int = 4
-
-    @Value
     var maxResponsePacketSize: Int = 1024 * 1024 * 10
 
     @Value

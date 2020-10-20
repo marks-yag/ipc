@@ -87,6 +87,7 @@ internal class RawIPCClient<T : Any>(
     private val promptHandler: (Prompt) -> ByteArray,
     private val sessionId: String?,
     private val currentCallId: AtomicLong,
+    private val onTheFly: MutableMap<Long, OnTheFly<T>>,
     metric: MetricRegistry,
     private val id: String,
     private val timer: Timer,
@@ -108,10 +109,6 @@ internal class RawIPCClient<T : Any>(
     private val queue = LinkedBlockingQueue<Request<T>>()
 
     private val flusher: Daemon<*>
-
-    private val onTheFly = ConcurrentSkipListMap<Long, OnTheFly<T>>()
-
-    private val uncompleted = ArrayList<OnTheFly<T>>()
 
     private var lastContact: Long = 0L
 
@@ -304,9 +301,7 @@ internal class RawIPCClient<T : Any>(
             onTheFly.keys.forEach { key ->
                 onTheFly[key]?.let { call ->
                     threadContext.parallelCalls.release()
-                    if (call.request.type.isIdempotent()) {
-                        uncompleted.add(call)
-                    } else {
+                    if (!call.request.type.isIdempotent()) {
                         onTheFly.remove(key)?.let {
                             it.doResponse(status(key, StatusCode.CONNECTION_ERROR))
                             it.request.packet.close()
@@ -315,10 +310,6 @@ internal class RawIPCClient<T : Any>(
                 }
             }
         }
-    }
-
-    internal fun getUncompletedRequests() : List<OnTheFly<T>> {
-        return uncompleted
     }
 
     inner class ResponseDecoder : ByteToMessageDecoder() {
