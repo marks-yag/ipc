@@ -38,6 +38,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.Timer
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -68,6 +69,8 @@ class IPCClient<T : Any>(
 
     private val currentCallId = AtomicLong()
 
+    private val onTheFly = ConcurrentSkipListMap<Long, OnTheFly<T>>()
+
     private var monitor: Daemon<Monitor> = Daemon("connection-monitor") {
         Monitor(it)
     }.also { it.start() }
@@ -79,7 +82,7 @@ class IPCClient<T : Any>(
     init {
         try {
             client = retry.call {
-                RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, metric, id, timer) {
+                RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, onTheFly, metric, id, timer) {
                     monitor.runner.notifyInactive(this)
                 }
             }
@@ -221,25 +224,24 @@ class IPCClient<T : Any>(
     internal fun recover() {
         lock.writeLock().withLock {
             client.close()
-            val uncompleted = client.getUncompletedRequests()
 
             Thread.sleep(config.connectBackOff.baseIntervalMs)
             client = try {
                 retry.call {
-                    RawIPCClient<T>(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, metric, id, timer) {
+                    RawIPCClient<T>(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, onTheFly, metric, id, timer) {
                         monitor.runner.notifyInactive(this)
                     }
                 }
             } catch (e: IOException) {
                 LOG.warn("Connection recovery failed, make all pending calls fail.")
-                for (call in uncompleted) {
+                for (call in onTheFly.values) {
                     LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
                     call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
                 }
                 throw e
             }.also {
                 LOG.info("Connection recovered, re-send all pending calls.")
-                for (call in uncompleted) {
+                for (call in onTheFly.values) {
                     LOG.debug("Re-send {}.", call.request)
                     it.send(call.request.type, call.request.packet, call.callback.func)
                 }
