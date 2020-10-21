@@ -94,7 +94,7 @@ class SessionTest {
                 val initConnection = client.getConnection()
                 server.ignoreHeartbeat = true
                 eventually(2000) {
-                    assertFalse(client.isConnected())
+                    assertNotEquals(initConnection, client.getConnection())
                 }
 
                 server.ignoreHeartbeat = false

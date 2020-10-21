@@ -24,6 +24,7 @@ import com.github.yag.ipc.Packet
 import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.daemon
 import io.netty.channel.EventLoopGroup
+import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.util.Properties
 import java.util.Timer
@@ -32,7 +33,7 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class ThreadContext private constructor(private val config: ThreadContextConfig, val timer: Timer = Timer(true), val eventLoop: EventLoopGroup = PlatformEventLoopGroup(config.threads).instance) {
+class ThreadContext private constructor(private val config: ThreadContextConfig, val timer: Timer = Timer(true), val eventLoop: EventLoopGroup = PlatformEventLoopGroup(config.eventLoopThreads).instance) {
 
     var refCnt = 1
         private set
@@ -46,8 +47,8 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
             try {
                 val batch = poll()
                 batch.first.writeAndFlush(batch.second)
-            } catch (e: InterruptedException) {
-                //:~
+            } catch (e: Exception) {
+                LOG.debug("Write request data failed.", e)
             }
         }
     }.apply { start() }
@@ -56,13 +57,13 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
 
     internal val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
 
-    private fun poll(): Pair<IPCClient<*>, ArrayList<Packet<RequestHeader>>> {
+    private fun poll(): Pair<RawIPCClient<*>, ArrayList<Packet<RequestHeader>>> {
         val list = ArrayList<Packet<RequestHeader>>()
         var length = 0L
 
-        val call = left?:queue.take()
-        var packet = call.request.packet
-        val client = call.client
+        val firstCall = left?:queue.take()
+        var packet = firstCall.pendingRequest.request.packet
+        val client = firstCall.client
         list.add(packet)
         length += packet.body.data().readableBytes()
 
@@ -70,7 +71,7 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
             val call = queue.poll()
             if (call != null) {
                 if (call.client == client) {
-                    packet = call.request.packet
+                    packet = call.pendingRequest.request.packet
                     list.add(packet)
                     length += packet.body.data().readableBytes()
                     if (length >= config.maxWriteBatchSize) {
@@ -107,6 +108,8 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
     }
 
     companion object {
+
+        private val LOG = LoggerFactory.getLogger(ThreadContext::class.java)
 
         private val lock = ReentrantLock()
 

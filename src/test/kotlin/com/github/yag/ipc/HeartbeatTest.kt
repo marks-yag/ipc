@@ -29,6 +29,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import java.util.concurrent.TimeUnit
 import kotlin.test.*
 
@@ -58,8 +59,9 @@ class HeartbeatTest {
                     connectRetry.maxRetries = 0
                 }
             }.use { client ->
+                val initConnection = client.getConnection()
                 eventually(3000) {
-                    assertFalse(client.isConnected())
+                    assertNotEquals(initConnection, client.getConnection())
                 }
             }
         }
@@ -107,8 +109,9 @@ class HeartbeatTest {
                     connectRetry.maxRetries = 0
                 }
             }.use { client ->
+                val initConnection = client.getConnection()
                 eventually(3000) {
-                    assertFalse(client.isConnected())
+                    assertNotEquals(initConnection, client.getConnection())
                 }
             }
         }

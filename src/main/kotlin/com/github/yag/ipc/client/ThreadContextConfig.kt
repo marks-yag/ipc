@@ -22,7 +22,7 @@ import com.github.yag.config.Value
 class ThreadContextConfig {
 
     @Value
-    var threads: Int = 0
+    var eventLoopThreads: Int = 0
 
     @Value
     var maxParallelCalls: Int = 128
