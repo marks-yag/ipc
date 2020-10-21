@@ -76,14 +76,13 @@ import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
 internal class RawIPCClient<T : Any>(
-    private val client: IPCClient<T>,
     private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
     private val threadContext: ThreadContext,
     private val promptHandler: (Prompt) -> ByteArray,
     private val sessionId: String?,
     private val currentCallId: AtomicLong,
-    private val onTheFly: MutableMap<Long, OnTheFly<T>>,
+    private val pendingRequests: MutableMap<Long, PendingRequest<T>>,
     metric: MetricRegistry,
     private val id: String,
     private val timer: Timer,
@@ -108,11 +107,7 @@ internal class RawIPCClient<T : Any>(
 
     private val lock = ReentrantLock()
 
-    private val cbLock = ReentrantLock()
-
     private val blockTime = metric.histogram("ipc-client-request-block-time")
-
-    private val batchSize = metric.histogram("ipc-client-batch-size")
 
     init {
         bootstrap = Bootstrap().apply {
@@ -187,9 +182,10 @@ internal class RawIPCClient<T : Any>(
         })
 
         val callId = header.callId
-        onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
+        val pendingRequest = PendingRequest(request, Callback(timestamp, callback))
+        pendingRequests[callId] = pendingRequest
 
-        threadContext.queue.offer(Call(client, request))
+        threadContext.queue.offer(Call(this, pendingRequest))
 
         val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
 
@@ -209,10 +205,14 @@ internal class RawIPCClient<T : Any>(
     }
 
     internal fun writeAndFlush(packets: List<Packet<RequestHeader>>) {
-        for (packet in packets) {
-            write(packet)
+        if (!closed.get()) {
+            for (packet in packets) {
+                write(packet)
+            }
+            flush()
+        } else {
+            LOG.trace("Ignore packets because client was closed: {}.", packets)
         }
-        flush()
     }
 
     private fun write(packet: Packet<RequestHeader>) {
@@ -229,7 +229,7 @@ internal class RawIPCClient<T : Any>(
     }
 
     private fun timeout(callId: Long) {
-        onTheFly.remove(callId)?.let {
+        pendingRequests.remove(callId)?.let {
             LOG.debug("Timeout: {}.", callId)
             it.doResponse(status(callId, StatusCode.TIMEOUT))
         }
@@ -246,23 +246,6 @@ internal class RawIPCClient<T : Any>(
                 }
 
                 LOG.info("IPC client closed, make all pending requests timeout.")
-                handlePendingRequests()
-            }
-        }
-    }
-
-    private fun handlePendingRequests() {
-        cbLock.withLock {
-            onTheFly.keys.forEach { key ->
-                onTheFly[key]?.let { call ->
-                    threadContext.parallelCalls.release()
-                    if (!call.request.type.isIdempotent()) {
-                        onTheFly.remove(key)?.let {
-                            it.doResponse(status(key, StatusCode.CONNECTION_ERROR))
-                            it.request.packet.close()
-                        }
-                    }
-                }
             }
         }
     }
@@ -320,10 +303,10 @@ internal class RawIPCClient<T : Any>(
 
         private fun doCallback(packet: Packet<ResponseHeader>) {
             val header = packet.header
-            onTheFly[header.thrift.callId]?.let {
+            pendingRequests[header.thrift.callId]?.let {
                 if (header.thrift.statusCode != StatusCode.PARTIAL_CONTENT) {
                     it.request.packet.close()
-                    onTheFly.remove(header.thrift.callId)
+                    pendingRequests.remove(header.thrift.callId)
                     threadContext.parallelCalls.release()
                 } else {
                     it.callback.lastContactTimestamp = System.currentTimeMillis()

@@ -68,7 +68,7 @@ class IPCClient<T : Any>(
 
     private val currentCallId = AtomicLong()
 
-    private val onTheFly = ConcurrentSkipListMap<Long, OnTheFly<T>>()
+    private val pendingRequests = ConcurrentSkipListMap<Long, PendingRequest<T>>()
 
     private var monitor: Daemon<Monitor> = Daemon("connection-monitor") {
         Monitor(it)
@@ -81,7 +81,7 @@ class IPCClient<T : Any>(
     init {
         try {
             client = retry.call {
-                RawIPCClient(this, endpoint, config, threadContext, promptHandler, null, currentCallId, onTheFly, metric, id, timer) {
+                RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer) {
                     monitor.runner.notifyInactive(this)
                 }
             }
@@ -220,36 +220,38 @@ class IPCClient<T : Any>(
         return send(type, Unpooled.wrappedBuffer(data)).get()
     }
 
-    internal fun writeAndFlush(packets: List<Packet<RequestHeader>>) {
-        lock.readLock().withLock {
-            client.writeAndFlush(packets)
-        }
-    }
-
     internal fun recover() {
         lock.writeLock().withLock {
             client.close()
+            threadContext.parallelCalls.release(pendingRequests.size)
 
-            Thread.sleep(config.connectBackOff.baseIntervalMs)
+            pendingRequests.filterNot {
+                it.value.request.type.isIdempotent()
+            }.forEach {
+                it.value.doResponse(status(it.key, StatusCode.CONNECTION_ERROR))
+                pendingRequests.remove(it.key)
+            }
+
             client = try {
                 retry.call {
-                    RawIPCClient<T>(this, endpoint, config, threadContext, promptHandler, sessionId, currentCallId, onTheFly, metric, id, timer) {
+                    RawIPCClient<T>(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
                         monitor.runner.notifyInactive(this)
+                    }
+                }.also {
+                    LOG.info("Connection recovered, re-send all pending calls.")
+                    for (call in pendingRequests.values) {
+                        LOG.debug("Re-send {}.", call.request)
+                        it.send(call.request.type, call.request.packet, call.callback.func)
                     }
                 }
             } catch (e: IOException) {
                 LOG.warn("Connection recovery failed, make all pending calls fail.")
-                for (call in onTheFly.values) {
+                for (call in pendingRequests.values) {
                     LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
                     call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
                 }
+                pendingRequests.clear()
                 throw e
-            }.also {
-                LOG.info("Connection recovered, re-send all pending calls.")
-                for (call in onTheFly.values) {
-                    LOG.debug("Re-send {}.", call.request)
-                    it.send(call.request.type, call.request.packet, call.callback.func)
-                }
             }
         }
     }

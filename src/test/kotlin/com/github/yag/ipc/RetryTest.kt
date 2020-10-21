@@ -70,10 +70,6 @@ class RetryTest {
 
                 assertEquals(StatusCode.CONNECTION_ERROR, nonIdempotentRequest.get().status())
 
-                eventually(2000) {
-                    assertFalse(client.isConnected())
-                }
-
                 server.ignoreHeartbeat = false
                 ignore = false
 
