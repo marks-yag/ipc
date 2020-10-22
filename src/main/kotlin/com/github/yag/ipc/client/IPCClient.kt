@@ -229,6 +229,7 @@ class IPCClient<T : Any>(
                 it.value.request.type.isIdempotent()
             }.forEach {
                 it.value.doResponse(status(it.key, StatusCode.CONNECTION_ERROR))
+                it.value.request.packet.close()
                 pendingRequests.remove(it.key)
             }
 
@@ -249,6 +250,9 @@ class IPCClient<T : Any>(
                 for (call in pendingRequests.values) {
                     LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
                     call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
+                }
+                pendingRequests.forEach {
+                    it.value.request.packet.close()
                 }
                 pendingRequests.clear()
                 throw e
