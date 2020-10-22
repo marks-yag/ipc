@@ -34,6 +34,7 @@ class RequestTimeoutTest {
     @AfterTest
     fun after() {
         assertEquals(0, ThreadContext.cache?.refCnt?:0)
+        System.gc()
     }
 
     enum class Operation(private val timeoutMs: Long) : RequestType<Operation> {

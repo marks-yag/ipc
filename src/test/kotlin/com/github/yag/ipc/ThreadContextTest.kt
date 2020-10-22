@@ -33,6 +33,7 @@ class ThreadContextTest {
     @AfterTest
     fun after() {
         assertEquals(0, ThreadContext.cache?.refCnt?:0)
+        System.gc()
     }
 
     @Test
