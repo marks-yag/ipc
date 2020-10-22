@@ -23,7 +23,6 @@ import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejectException
 import com.github.yag.ipc.ConnectionResponse
-import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PacketCodec
 import com.github.yag.ipc.PacketEncoder
@@ -36,7 +35,6 @@ import com.github.yag.ipc.StatusCode
 import com.github.yag.ipc.TEncoder
 import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
-import com.github.yag.ipc.daemon
 import com.github.yag.ipc.status
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
@@ -69,10 +67,7 @@ import java.nio.ByteBuffer
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.ExecutionException
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -83,9 +78,11 @@ import kotlin.system.measureTimeMillis
 internal class RawIPCClient<T : Any>(
     private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
+    private val threadContext: ThreadContext,
     private val promptHandler: (Prompt) -> ByteArray,
     private val sessionId: String?,
     private val currentCallId: AtomicLong,
+    private val pendingRequests: MutableMap<Long, PendingRequest<T>>,
     metric: MetricRegistry,
     private val id: String,
     private val timer: Timer,
@@ -104,36 +101,18 @@ internal class RawIPCClient<T : Any>(
 
     private val channel: Channel
 
-    private val queue = LinkedBlockingQueue<Request<T>>()
-
-    private val flusher: Daemon<*>
-
-    private val parallelCalls = Semaphore(config.maxParallelCalls)
-
-    private val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
-
-    private val onTheFly = ConcurrentSkipListMap<Long, OnTheFly<T>>()
-
-    private val uncompleted = ArrayList<OnTheFly<T>>()
-
     private var lastContact: Long = 0L
 
     private val closed = AtomicBoolean()
 
     private val lock = ReentrantLock()
 
-    private val cbLock = ReentrantLock()
-
     private val blockTime = metric.histogram("ipc-client-request-block-time")
-
-    private val batchSize = metric.histogram("ipc-client-batch-size")
-
-    private val sendTime = metric.histogram("ipc-client-send-time")
 
     init {
         bootstrap = Bootstrap().apply {
             channel(CHANNEL_CLASS)
-            group(PlatformEventLoopGroup(config.threads).instance)
+            group(threadContext.eventLoop)
             applyChannelConfig(config.channel)
             handler(ChildChannelHandler())
         }
@@ -142,7 +121,6 @@ internal class RawIPCClient<T : Any>(
         promptFuture = CompletableFuture()
         connectFuture = CompletableFuture()
 
-        var succ = false
         try {
             channel = bootstrap.connect(endpoint).sync().channel().also {
                 prompt = promptFuture.get()
@@ -157,19 +135,13 @@ internal class RawIPCClient<T : Any>(
                 it.writeAndFlush(connectionRequest)
                 lastContact = System.currentTimeMillis()
             }
-            succ = true
-        } catch (e: InterruptedException) {
-            throw InterruptedException("Connect to ipc server timeout and interrupted.")
-        } catch (e: ConnectException) {
-            throw ConnectException(e.message) //make stack clear
-        } catch (e: SocketException) {
-            throw SocketException(e.message)
-        } finally {
-            LOG.debug("Cleanup bootstrap threads.")
-            if (!succ) {
-                bootstrap.config().group().shutdownGracefully().sync()
+        } catch (e: Exception) {
+            when (e) {
+                is InterruptedException -> throw InterruptedException("Connect to ipc server timeout and interrupted.")
+                is ConnectException -> throw ConnectException(e.message) //make stack clear
+                is SocketException -> throw SocketException(e.message)
+                else -> throw e
             }
-            LOG.debug("Cleanup bootstrap threads done.")
         }
 
         LOG.debug("New ipc client created.")
@@ -179,39 +151,6 @@ internal class RawIPCClient<T : Any>(
         } catch (e: ExecutionException) {
             throw e.cause ?: e
         }
-
-        flusher = daemon("flusher-$id") { shouldStop ->
-            while (!shouldStop.get()) {
-                try {
-                    val list = poll()
-                    batchSize.update(list.size)
-
-                    val start = System.currentTimeMillis()
-
-                    list.forEach { packet ->
-                        val call = onTheFly[packet.header.thrift.callId]
-                        checkNotNull(call)
-                        call.sent = true
-
-                        channel.write(packet).addListener {
-                            sendTime.update(System.currentTimeMillis() - start)
-                            parallelRequestContentSize.release(packet.header.thrift.contentLength)
-                            if (LOG.isTraceEnabled) {
-                                LOG.trace(
-                                    "Released {} then {}.",
-                                    packet.header.thrift.contentLength,
-                                    parallelRequestContentSize.availablePermits()
-                                )
-                            }
-                        }
-                    }
-
-                    channel.flush()
-                } catch (e: InterruptedException) {
-                    //:~
-                }
-            }
-        }.apply { start() }
     }
 
     fun send(type: RequestType<T>, body: Body, callback: (Packet<ResponseHeader>) -> Any?) {
@@ -238,14 +177,15 @@ internal class RawIPCClient<T : Any>(
         val header = packet.header.thrift
 
         blockTime.update(measureTimeMillis {
-            parallelCalls.acquire()
-            parallelRequestContentSize.acquire(header.contentLength)
+            threadContext.parallelCalls.acquire()
+            threadContext.parallelRequestContentSize.acquire(header.contentLength)
         })
 
         val callId = header.callId
-        onTheFly[callId] = OnTheFly(request, Callback(timestamp, callback))
+        val pendingRequest = PendingRequest(request, Callback(timestamp, callback))
+        pendingRequests[callId] = pendingRequest
 
-        queue.offer(request)
+        threadContext.queue.offer(Call(this, pendingRequest))
 
         val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
 
@@ -260,75 +200,54 @@ internal class RawIPCClient<T : Any>(
         }
     }
 
-    private fun timeout(callId: Long) {
-        onTheFly.remove(callId)?.let {
-            LOG.debug("Timeout: {}.", callId)
-            it.doResponse(status(callId, StatusCode.TIMEOUT))
+    private fun flush() {
+        channel.flush()
+    }
+
+    internal fun writeAndFlush(packets: List<Packet<RequestHeader>>) {
+        if (!closed.get()) {
+            for (packet in packets) {
+                write(packet)
+            }
+            flush()
+        } else {
+            LOG.trace("Ignore packets because client was closed: {}.", packets)
         }
     }
 
-    private fun poll(): ArrayList<Packet<RequestHeader>> {
-        val list = ArrayList<Packet<RequestHeader>>()
-        var length = 0L
-
-        var packet = queue.take().packet
-        list.add(packet)
-        length += packet.body.data().readableBytes()
-
-        while (true) {
-            val request = queue.poll()
-            if (request != null) {
-                packet = request.packet
-                list.add(packet)
-                length += packet.body.data().readableBytes()
-                if (length >= config.maxWriteBatchSize) {
-                    break
-                }
-            } else {
-                break
+    private fun write(packet: Packet<RequestHeader>) {
+        channel.write(packet).addListener {
+            threadContext.parallelRequestContentSize.release(packet.header.thrift.contentLength)
+            if (LOG.isTraceEnabled) {
+                LOG.trace(
+                    "Released {} then {}.",
+                    packet.header.thrift.contentLength,
+                    threadContext.parallelRequestContentSize.availablePermits()
+                )
             }
         }
-        return list
+    }
+
+    private fun timeout(callId: Long) {
+        pendingRequests.remove(callId)?.let {
+            LOG.debug("Timeout: {}.", callId)
+            it.doResponse(status(callId, StatusCode.TIMEOUT))
+        }
     }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
             addThreadName(id) {
                 LOG.info("IPC client closing...")
-                flusher.close()
                 try {
                     channel.close().sync()
                 } catch (e: Exception) {
                     LOG.warn("Close channel failed.")
                 }
-                channel.eventLoop().shutdownGracefully()
 
                 LOG.info("IPC client closed, make all pending requests timeout.")
-                handlePendingRequests()
             }
         }
-    }
-
-    private fun handlePendingRequests() {
-        cbLock.withLock {
-            onTheFly.keys.forEach { key ->
-                onTheFly[key]?.let { call ->
-                    parallelCalls.release()
-                    if (call.request.type.isIdempotent() || !call.sent) {
-                        uncompleted.add(call)
-                    } else {
-                        onTheFly.remove(key)?.let {
-                            it.doResponse(status(key, StatusCode.CONNECTION_ERROR))
-                            it.request.packet.close()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    internal fun getUncompletedRequests() : List<OnTheFly<T>> {
-        return uncompleted
     }
 
     inner class ResponseDecoder : ByteToMessageDecoder() {
@@ -384,11 +303,11 @@ internal class RawIPCClient<T : Any>(
 
         private fun doCallback(packet: Packet<ResponseHeader>) {
             val header = packet.header
-            onTheFly[header.thrift.callId]?.let {
+            pendingRequests[header.thrift.callId]?.let {
                 if (header.thrift.statusCode != StatusCode.PARTIAL_CONTENT) {
                     it.request.packet.close()
-                    onTheFly.remove(header.thrift.callId)
-                    parallelCalls.release()
+                    pendingRequests.remove(header.thrift.callId)
+                    threadContext.parallelCalls.release()
                 } else {
                     it.callback.lastContactTimestamp = System.currentTimeMillis()
                     LOG.trace(
@@ -420,7 +339,7 @@ internal class RawIPCClient<T : Any>(
                         LOG.debug("Send heartbeat.")
                         ctx.channel().writeAndFlush(
                             Packet.requestHeartbeat
-                        ).addListener { ChannelFutureListener.CLOSE_ON_FAILURE }
+                        ).addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
                     }
                 }
             }

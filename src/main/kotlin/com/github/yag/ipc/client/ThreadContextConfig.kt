@@ -15,27 +15,21 @@
  * under the License.
  */
 
-package com.github.yag.ipc
+package com.github.yag.ipc.client
 
-import io.netty.buffer.Unpooled
-import java.nio.ByteBuffer
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import com.github.yag.config.Value
 
-class SerDesTest {
+class ThreadContextConfig {
 
-    @Test
-    fun test() {
-        val request = ConnectRequest().apply {
-            setVersion("v1")
-            setBody(ByteBuffer.wrap("foo".toByteArray()))
-            setRequestTimeoutMs(1000)
-        }
+    @Value
+    var eventLoopThreads: Int = 0
 
-        val encoded = TEncoder.encode(request, Unpooled.buffer())
-        val got = TDecoder.decode(ConnectRequest(), encoded)
-        assertEquals(request, got)
-        encoded.release()
-    }
+    @Value
+    var maxParallelCalls: Int = 128
 
+    @Value
+    var maxParallelRequestContentSize: Int = 1024 * 1024 * 16
+
+    @Value
+    var maxWriteBatchSize: Int = 8192
 }

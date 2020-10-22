@@ -20,9 +20,7 @@ package com.github.yag.ipc.client
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.ResponseHeader
 
-internal class OnTheFly<T>(val request: Request<T>, val callback: Callback) {
-
-    var sent = false
+internal class PendingRequest<T>(val request: Request<T>, val callback: Callback) {
 
     fun doResponse(response: Packet<ResponseHeader>) {
         request.packet.use {

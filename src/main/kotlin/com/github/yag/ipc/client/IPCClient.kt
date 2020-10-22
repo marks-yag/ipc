@@ -18,12 +18,12 @@
 package com.github.yag.ipc.client
 
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.config.Value
 import com.github.yag.ipc.Body
 import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody
 import com.github.yag.ipc.Prompt
+import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.StatusCode
 import com.github.yag.ipc.status
@@ -36,8 +36,8 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import java.util.Timer
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -54,6 +54,7 @@ import kotlin.concurrent.withLock
 class IPCClient<T : Any>(
     private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
+    private val threadContext: ThreadContext,
     private val promptHandler: (Prompt) -> ByteArray,
     private val metric: MetricRegistry,
     private val id: String
@@ -63,21 +64,33 @@ class IPCClient<T : Any>(
 
     private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
 
-    private val timer = Timer()
+    private val timer = threadContext.timer
 
     private val currentCallId = AtomicLong()
+
+    private val pendingRequests = ConcurrentSkipListMap<Long, PendingRequest<T>>()
 
     private var monitor: Daemon<Monitor> = Daemon("connection-monitor") {
         Monitor(it)
     }.also { it.start() }
 
-    private var client: RawIPCClient<T> = retry.call {
-        RawIPCClient(endpoint, config, promptHandler, null, currentCallId, metric, id, timer) {
-            monitor.runner.notifyInactive(this)
+    private var client: RawIPCClient<T>
+
+    val sessionId: String
+
+    init {
+        try {
+            client = retry.call {
+                RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer) {
+                    monitor.runner.notifyInactive(this)
+                }
+            }
+            sessionId = client.connection.sessionId
+        } catch (e: Exception) {
+            threadContext.release()
+            throw e
         }
     }
-
-    val sessionId: String = client.connection.sessionId
 
     /**
      * Send request packet to server.
@@ -210,28 +223,39 @@ class IPCClient<T : Any>(
     internal fun recover() {
         lock.writeLock().withLock {
             client.close()
-            val uncompleted = client.getUncompletedRequests()
+            threadContext.parallelCalls.release(pendingRequests.size)
 
-            Thread.sleep(config.connectBackOff.baseIntervalMs)
+            pendingRequests.filterNot {
+                it.value.request.type.isIdempotent()
+            }.forEach {
+                it.value.doResponse(status(it.key, StatusCode.CONNECTION_ERROR))
+                it.value.request.packet.close()
+                pendingRequests.remove(it.key)
+            }
+
             client = try {
                 retry.call {
-                    RawIPCClient<T>(endpoint, config, promptHandler, sessionId, currentCallId, metric, id, timer) {
+                    RawIPCClient<T>(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
                         monitor.runner.notifyInactive(this)
+                    }
+                }.also {
+                    LOG.info("Connection recovered, re-send all pending calls.")
+                    for (call in pendingRequests.values) {
+                        LOG.debug("Re-send {}.", call.request)
+                        it.send(call.request.type, call.request.packet, call.callback.func)
                     }
                 }
             } catch (e: IOException) {
                 LOG.warn("Connection recovery failed, make all pending calls fail.")
-                for (call in uncompleted) {
+                for (call in pendingRequests.values) {
                     LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
                     call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
                 }
-                throw e
-            }.also {
-                LOG.info("Connection recovered, re-send all pending calls.")
-                for (call in uncompleted) {
-                    LOG.debug("Re-send {}.", call.request)
-                    it.send(call.request.type, call.request.packet, call.callback.func)
+                pendingRequests.forEach {
+                    it.value.request.packet.close()
                 }
+                pendingRequests.clear()
+                throw e
             }
         }
     }
@@ -244,7 +268,7 @@ class IPCClient<T : Any>(
         lock.readLock().withLock {
             client.close()
         }
-        timer.cancel()
+        threadContext.release()
     }
 
     /**

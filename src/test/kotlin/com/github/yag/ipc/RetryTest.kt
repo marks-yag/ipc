@@ -19,22 +19,24 @@ package com.github.yag.ipc
 
 import com.github.yag.ipc.client.IdempotentRequest
 import com.github.yag.ipc.client.NonIdempotentRequest
+import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
 import io.netty.buffer.Unpooled
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-import kotlin.concurrent.thread
-import kotlin.test.Ignore
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class RetryTest {
+
+    @AfterTest
+    fun after() {
+        assertEquals(0, ThreadContext.cache?.refCnt?:0)
+    }
 
     /**
      * Test client can reconnect to server and make remote calls.
@@ -68,10 +70,6 @@ class RetryTest {
 
                 assertEquals(StatusCode.CONNECTION_ERROR, nonIdempotentRequest.get().status())
 
-                eventually(2000) {
-                    assertFalse(client.isConnected())
-                }
-
                 server.ignoreHeartbeat = false
                 ignore = false
 
@@ -81,7 +79,9 @@ class RetryTest {
 
                 assertNotEquals(initConnection, client.getConnection())
 
-                assertEquals(StatusCode.OK, idempotentRequest.get().status())
+                assertEquals(StatusCode.OK, idempotentRequest.get().use {
+                    it.status()
+                })
             }
         }
     }
@@ -90,7 +90,7 @@ class RetryTest {
     fun testCallTimeoutWhenClientReconnectFailed() {
         server<String> {
             request {
-                set("foo") { _, request, echo ->
+                set("foo") { _, _, _ ->
                 }
             }
         }.use { server ->
@@ -103,7 +103,9 @@ class RetryTest {
                 val idempotentRequest = client.send(IdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
                 server.close()
 
-                assertEquals(StatusCode.TIMEOUT, idempotentRequest.get().status())
+                assertEquals(StatusCode.TIMEOUT, idempotentRequest.get().use {
+                    it.status()
+                })
             }
         }
     }

@@ -24,6 +24,8 @@ import java.util.UUID
 
 class IPCClientBuilder<T: Any>(private var endpoint: InetSocketAddress, val config: IPCClientConfig = IPCClientConfig()) {
 
+    var threadContext: ThreadContext? = null
+
     var promptHandler: (Prompt) -> ByteArray = {
         ByteArray(0)
     }
@@ -41,7 +43,7 @@ class IPCClientBuilder<T: Any>(private var endpoint: InetSocketAddress, val conf
     }
 
     fun build() : IPCClient<T> {
-        return IPCClient(endpoint, config, promptHandler, metric, id)
+        return IPCClient(endpoint, config, threadContext ?: ThreadContext.getDefault(), promptHandler, metric, id)
     }
 
 }

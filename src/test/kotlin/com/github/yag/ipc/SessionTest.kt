@@ -18,12 +18,14 @@
 package com.github.yag.ipc
 
 import com.github.yag.ipc.client.NonIdempotentRequest
+import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.Connection
 import com.github.yag.ipc.server.RequestHandler
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
 import io.netty.buffer.Unpooled
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,6 +34,11 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class SessionTest {
+
+    @AfterTest
+    fun after() {
+        assertEquals(0, ThreadContext.cache?.refCnt?:0)
+    }
 
     @Test
     fun testSessionId() {
@@ -62,7 +69,7 @@ class SessionTest {
                 assertNotNull(sessionId)
                 assertEquals(sessionId, client.sessionId)
 
-                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).use {
                     assertEquals(StatusCode.OK, it.status())
                 }
             }
@@ -87,7 +94,7 @@ class SessionTest {
                 val initConnection = client.getConnection()
                 server.ignoreHeartbeat = true
                 eventually(2000) {
-                    assertFalse(client.isConnected())
+                    assertNotEquals(initConnection, client.getConnection())
                 }
 
                 server.ignoreHeartbeat = false
