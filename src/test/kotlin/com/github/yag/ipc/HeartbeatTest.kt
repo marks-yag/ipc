@@ -151,7 +151,9 @@ class HeartbeatTest {
 
                 block = false
 
-                assertEquals(StatusCode.OK, response.get(3, TimeUnit.SECONDS).status())
+                assertEquals(StatusCode.OK, response.get(3, TimeUnit.SECONDS).use {
+                    it.status()
+                })
             }
         }
     }
