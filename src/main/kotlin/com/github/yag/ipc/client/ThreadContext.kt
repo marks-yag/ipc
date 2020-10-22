@@ -101,8 +101,8 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
             refCnt--
             if (refCnt == 0) {
                 eventLoop.shutdownGracefully()
+                flusher.close()
             }
-            flusher.close()
             this
         }
     }
