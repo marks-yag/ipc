@@ -47,6 +47,8 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
             try {
                 val batch = poll()
                 batch.first.writeAndFlush(batch.second)
+            } catch (e: InterruptedException) {
+                //:<
             } catch (e: Exception) {
                 LOG.debug("Write request data failed.", e)
             }

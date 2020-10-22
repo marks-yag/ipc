@@ -35,6 +35,7 @@ class SerDesTest {
         val encoded = TEncoder.encode(request, Unpooled.buffer())
         val got = TDecoder.decode(ConnectRequest(), encoded)
         assertEquals(request, got)
+        encoded.release()
     }
 
 }

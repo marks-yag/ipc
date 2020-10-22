@@ -38,5 +38,6 @@ class RequestPacketSerDesTest {
         assertEquals(5, newPacket.header.thrift.contentLength)
 
         buf.release()
+        data.release()
     }
 }
