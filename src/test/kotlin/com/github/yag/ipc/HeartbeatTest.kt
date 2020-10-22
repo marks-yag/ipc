@@ -17,14 +17,15 @@
 
 package com.github.yag.ipc
 
+import com.github.yag.ipc.client.IdempotentRequest
 import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
+import io.netty.buffer.PooledByteBufAllocator
 import io.netty.buffer.Unpooled
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import java.util.concurrent.TimeUnit
+import kotlin.test.*
 
 class HeartbeatTest {
 
@@ -99,6 +100,45 @@ class HeartbeatTest {
                 eventually(3000) {
                     assertFalse(client.isConnected())
                 }
+            }
+        }
+    }
+
+    @Test
+    fun testHeartbeatBlockedByHandler() {
+        var block = true
+        server<String> {
+            request {
+                map("foo") {
+                    if (block) {
+                        Thread.sleep(Long.MAX_VALUE)
+                    }
+                    it.ok()
+                }
+            }
+        }.use { server ->
+            client<String>(server.endpoint) {
+                config {
+                    heartbeatIntervalMs = 500
+                    heartbeatTimeoutMs = 2000
+                    connectRetry.maxRetries = 0
+                }
+            }.use { client ->
+                val initConnection = client.getConnection()
+                val data = Unpooled.directBuffer().writeBytes("hello".toByteArray())
+                val response = data.use {
+                    client.send(IdempotentRequest("foo"), PlainBody(data))
+                }
+
+                eventually(5000) {
+                    assertNotEquals(initConnection, client.getConnection())
+                }
+
+                assertFalse(response.isDone)
+
+                block = false
+
+                assertEquals(StatusCode.OK, response.get(3, TimeUnit.SECONDS).status())
             }
         }
     }
