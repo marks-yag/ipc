@@ -404,7 +404,6 @@ internal class RawIPCClient<T : Any>(
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
-            LOG.debug("Channel inactive: {} {}.", connection?.connectionId, this)
             channelInactive()
         }
 

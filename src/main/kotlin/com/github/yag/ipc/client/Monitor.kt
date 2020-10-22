@@ -34,9 +34,12 @@ class Monitor(private val shouldStop: AtomicBoolean) : Runnable {
         while (!shouldStop.get()) {
             try {
                 val client = queue.poll(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-                LOG.warn("Connection broken: {}.", client.getConnection().connectionId)
+                LOG.warn("Connection broken: {}.", client.getConnection())
                 client.recover()
             } catch (e: InterruptedException) {
+                //:<
+            } catch (e: Exception) {
+                LOG.warn("Recovery client failed.", e)
             }
         }
     }
