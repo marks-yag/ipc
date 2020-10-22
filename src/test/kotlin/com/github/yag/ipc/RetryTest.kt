@@ -79,7 +79,9 @@ class RetryTest {
 
                 assertNotEquals(initConnection, client.getConnection())
 
-                assertEquals(StatusCode.OK, idempotentRequest.get().status())
+                assertEquals(StatusCode.OK, idempotentRequest.get().use {
+                    it.status()
+                })
             }
         }
     }
@@ -101,7 +103,9 @@ class RetryTest {
                 val idempotentRequest = client.send(IdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
                 server.close()
 
-                assertEquals(StatusCode.TIMEOUT, idempotentRequest.get().status())
+                assertEquals(StatusCode.TIMEOUT, idempotentRequest.get().use {
+                    it.status()
+                })
             }
         }
     }

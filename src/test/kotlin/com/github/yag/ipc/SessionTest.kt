@@ -69,7 +69,7 @@ class SessionTest {
                 assertNotNull(sessionId)
                 assertEquals(sessionId, client.sessionId)
 
-                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).use {
                     assertEquals(StatusCode.OK, it.status())
                 }
             }
