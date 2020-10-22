@@ -77,7 +77,9 @@ class ThreadContextTest {
             }
 
             results.forEach {
-                assertEquals(StatusCode.TIMEOUT, it.get().status())
+                assertEquals(StatusCode.TIMEOUT, it.get().use {
+                    it.status()
+                })
             }
         }
     }
@@ -102,7 +104,9 @@ class ThreadContextTest {
             }
 
             results.forEach {
-                assertEquals(StatusCode.TIMEOUT, it.second.get().status())
+                assertEquals(StatusCode.TIMEOUT, it.second.get().use {
+                    it.status()
+                })
             }
 
             val tc = ThreadContext.cache
