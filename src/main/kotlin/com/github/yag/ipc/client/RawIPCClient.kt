@@ -305,9 +305,6 @@ internal class RawIPCClient<T : Any>(
 
                 LOG.info("IPC client closed, make all pending requests timeout.")
                 handlePendingRequests()
-                queue.forEach {
-                    it.packet.close()
-                }
             }
         }
     }
@@ -322,6 +319,7 @@ internal class RawIPCClient<T : Any>(
                     } else {
                         onTheFly.remove(key)?.let {
                             it.doResponse(status(key, StatusCode.CONNECTION_ERROR))
+                            it.request.packet.close()
                         }
                     }
                 }
@@ -406,7 +404,7 @@ internal class RawIPCClient<T : Any>(
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
-            LOG.debug("Channel inactive: {}.", connection.connectionId)
+            LOG.debug("Channel inactive: {} {}.", connection?.connectionId, this)
             channelInactive()
         }
 
