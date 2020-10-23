@@ -38,19 +38,6 @@ fun StatusCode.isSuccessful(): Boolean {
     return value >= 0
 }
 
-internal fun <T> addThreadName(postfix: String, body: () -> T): T {
-    val thread = Thread.currentThread()
-    val oldName = thread.name
-    if (!oldName.endsWith("-$postfix")) {
-        thread.name = "$oldName-$postfix"
-    }
-    try {
-        return body()
-    } finally {
-        thread.name = oldName
-    }
-}
-
 fun <T> ByteBuf.use(body: (ByteBuf) -> T): T {
     return try {
         body(this)

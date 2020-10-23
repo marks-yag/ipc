@@ -60,6 +60,8 @@ class IPCClient<T : Any>(
     private val id: String
 ) : AutoCloseable {
 
+    private val LOG: Logger = LoggerFactory.getLogger("${IPCClient::class.java}-$id")
+
     private val lock = ReentrantReadWriteLock()
 
     private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
@@ -280,10 +282,6 @@ class IPCClient<T : Any>(
     }
 
     internal fun getConnection() = client.connection
-
-    companion object {
-        private val LOG: Logger = LoggerFactory.getLogger(IPCClient::class.java)
-    }
 
 }
 

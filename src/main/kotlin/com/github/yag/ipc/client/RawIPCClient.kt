@@ -33,7 +33,6 @@ import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.ResponsePacketHeader
 import com.github.yag.ipc.StatusCode
 import com.github.yag.ipc.TEncoder
-import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
 import com.github.yag.ipc.status
 import io.netty.bootstrap.Bootstrap
@@ -88,6 +87,8 @@ internal class RawIPCClient<T : Any>(
     private val timer: Timer,
     private val channelInactive: () -> Unit
 ) : AutoCloseable {
+
+    private val LOG: Logger = LoggerFactory.getLogger("${RawIPCClient::class.java}-$id")
 
     private val bootstrap: Bootstrap
 
@@ -237,16 +238,14 @@ internal class RawIPCClient<T : Any>(
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
-            addThreadName(id) {
-                LOG.info("IPC client closing...")
-                try {
-                    channel.close().sync()
-                } catch (e: Exception) {
-                    LOG.warn("Close channel failed.")
-                }
-
-                LOG.info("IPC client closed, make all pending requests timeout.")
+            LOG.info("IPC client closing...")
+            try {
+                channel.close().sync()
+            } catch (e: Exception) {
+                LOG.warn("Close channel failed.")
             }
+
+            LOG.info("IPC client closed, make all pending requests timeout.")
         }
     }
 
@@ -376,7 +375,6 @@ internal class RawIPCClient<T : Any>(
     }
 
     companion object {
-        private val LOG: Logger = LoggerFactory.getLogger(RawIPCClient::class.java)
 
         val CHANNEL_CLASS: Class<out SocketChannel> =
             when {
