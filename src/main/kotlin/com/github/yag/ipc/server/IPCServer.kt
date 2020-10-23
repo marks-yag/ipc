@@ -32,7 +32,6 @@ import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.RequestPacketHeader
 import com.github.yag.ipc.TDecoder
 import com.github.yag.ipc.TEncoder
-import com.github.yag.ipc.addThreadName
 import com.github.yag.ipc.applyChannelConfig
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
@@ -81,6 +80,8 @@ class IPCServer internal constructor(
     private val id: String
 ) : AutoCloseable {
 
+    private val LOG: Logger = LoggerFactory.getLogger("${IPCServer::class.java}-$id")
+
     private val serverBootstrap: ServerBootstrap
 
     private val handler = ChildChannelHandler()
@@ -110,9 +111,7 @@ class IPCServer internal constructor(
 
 
     init {
-        addThreadName(id) {
-            LOG.info("Start ipc server.")
-        }
+        LOG.info("Start ipc server.")
         serverBootstrap = ServerBootstrap().apply {
             when {
                 Epoll.isAvailable() -> {
@@ -145,13 +144,9 @@ class IPCServer internal constructor(
         try {
             channelFuture = serverBootstrap.bind(config.host, config.port).sync()
             endpoint = channelFuture.channel().localAddress() as InetSocketAddress
-            addThreadName(id) {
-                LOG.info("IPC server started on: {}.", endpoint)
-            }
+            LOG.info("IPC server started on: {}.", endpoint)
         } catch (e: BindException) {
-            addThreadName(id) {
-                LOG.error("Port conflict: {}.", config.port, e)
-            }
+            LOG.error("Port conflict: {}.", config.port, e)
             throw e
         }
     }
@@ -161,8 +156,6 @@ class IPCServer internal constructor(
 
         override fun initChannel(socketChannel: SocketChannel) {
             LOG.debug("New tcp connection arrived.")
-
-
 
             val connection = Connection(UUID.randomUUID().toString(), promptData())
 
@@ -330,34 +323,29 @@ class IPCServer internal constructor(
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
-            addThreadName(id) {
-                LOG.info("Closing ipc server.")
-                trafficExecutor.let {
-                    it.shutdown()
-                    it.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
-                }
-
-                if (requestHandler is AutoCloseable) {
-                    requestHandler.close()
-                }
-
-                LOG.debug("Request handler closed.")
-
-                channelFuture.channel().close().sync()
-
-                LOG.debug("Channel closed.")
-
-                serverBootstrap.config().let {
-                    it.group().shutdownGracefully()
-                    it.childGroup().shutdownGracefully()
-                }
-
-                LOG.info("IPC server closed.")
+            LOG.info("Closing ipc server.")
+            trafficExecutor.let {
+                it.shutdown()
+                it.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
             }
+
+            if (requestHandler is AutoCloseable) {
+                requestHandler.close()
+            }
+
+            LOG.debug("Request handler closed.")
+
+            channelFuture.channel().close().sync()
+
+            LOG.debug("Channel closed.")
+
+            serverBootstrap.config().let {
+                it.group().shutdownGracefully()
+                it.childGroup().shutdownGracefully()
+            }
+
+            LOG.info("IPC server closed.")
         }
     }
 
-    companion object {
-        private val LOG: Logger = LoggerFactory.getLogger(IPCServer::class.java)
-    }
 }
