@@ -37,7 +37,12 @@ class RequestPacketSerDesTest {
         assertEquals("foo", newPacket.header.thrift.callType)
         assertEquals(5, newPacket.header.thrift.contentLength)
 
-        buf.release()
+        newPacket.close()
+
         data.release()
+        buf.release()
+
+        assertEquals(0, buf.refCnt())
+        assertEquals(0, data.refCnt())
     }
 }
