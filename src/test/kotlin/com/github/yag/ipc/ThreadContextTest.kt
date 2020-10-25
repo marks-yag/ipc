@@ -18,11 +18,14 @@
 package com.github.yag.ipc
 
 import com.github.yag.ipc.client.IdempotentRequest
+import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.ThreadContext
+import com.github.yag.ipc.client.ThreadContextConfig
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import io.netty.buffer.Unpooled
 import kotlin.test.AfterTest
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -120,6 +123,47 @@ class ThreadContextTest {
 
             assertNotNull(tc)
             assertEquals(0, tc.refCnt)
+        }
+    }
+
+    @Test
+    fun testMultiServer() {
+        val threads = 16
+
+        val servers = Array(threads) { sid ->
+            server<String> {
+                request {
+                    map("foo") {
+                        it.ok("hello$sid")
+                    }
+                }
+            }
+        }
+        val tc = ThreadContext(ThreadContextConfig())
+        val clients = Array(threads) {
+            client<String>(servers[it].endpoint) {
+                threadContext = tc.retain()
+            }
+        }
+
+        val results = clients.mapIndexed { index, ipcClient ->
+            ipcClient.send(NonIdempotentRequest("foo"), StringBody("bar$index"))
+        }
+
+        results.forEachIndexed { index, future ->
+            future.get().use {
+                assertEquals("hello$index",it.body().toString(Charsets.UTF_8))
+            }
+        }
+
+        clients.forEach {
+            it.close()
+        }
+
+        tc.release()
+
+        servers.forEach {
+            it.close()
         }
     }
 }

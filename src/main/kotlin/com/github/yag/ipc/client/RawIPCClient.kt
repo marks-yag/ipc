@@ -186,7 +186,7 @@ internal class RawIPCClient<T : Any>(
         val pendingRequest = PendingRequest(request, Callback(timestamp, callback))
         pendingRequests[callId] = pendingRequest
 
-        threadContext.queue.offer(Call(this, pendingRequest))
+        threadContext.offer(Call(this, pendingRequest))
 
         val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
 

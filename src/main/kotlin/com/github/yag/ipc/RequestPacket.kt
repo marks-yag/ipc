@@ -19,6 +19,7 @@ package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
+import org.apache.thrift.TSerializable
 
 class RequestPacketHeader(thrift: RequestHeader = RequestHeader()) : PacketHeader<RequestHeader>(thrift, {
     it.contentLength
@@ -26,7 +27,7 @@ class RequestPacketHeader(thrift: RequestHeader = RequestHeader()) : PacketHeade
     it.callId == -1L
 })
 
-fun Packet<RequestHeader>.ok(data: ByteBuf = Unpooled.EMPTY_BUFFER): Packet<ResponseHeader> {
+fun Packet<RequestHeader>.ok(data: ByteBuf): Packet<ResponseHeader> {
     return status(StatusCode.OK, data)
 }
 
@@ -34,10 +35,30 @@ fun Packet<RequestHeader>.ok(data: ByteArray): Packet<ResponseHeader> {
     return status(StatusCode.OK, Unpooled.wrappedBuffer(data))
 }
 
-fun Packet<RequestHeader>.status(code: StatusCode, data: ByteBuf = Unpooled.EMPTY_BUFFER): Packet<ResponseHeader> {
+fun Packet<RequestHeader>.ok(data: String): Packet<ResponseHeader> {
+    return status(StatusCode.OK, StringBody(data))
+}
+
+fun Packet<RequestHeader>.ok(data: TSerializable): Packet<ResponseHeader> {
+    return status(StatusCode.OK, ThriftBody(data))
+}
+
+fun Packet<RequestHeader>.ok(body: Body = PlainBody(Unpooled.EMPTY_BUFFER)): Packet<ResponseHeader> {
+    return status(StatusCode.OK, body)
+}
+
+fun Packet<RequestHeader>.status(code: StatusCode, data: ByteBuf): Packet<ResponseHeader> {
     return status(header.thrift.callId, code, data)
 }
 
-fun status(callId: Long, code: StatusCode, data: ByteBuf = Unpooled.EMPTY_BUFFER): Packet<ResponseHeader> {
+fun Packet<RequestHeader>.status(code: StatusCode, body: Body = PlainBody(Unpooled.EMPTY_BUFFER)): Packet<ResponseHeader> {
+    return status(header.thrift.callId, code, body)
+}
+
+fun status(callId: Long, code: StatusCode, data: ByteBuf): Packet<ResponseHeader> {
     return Packet(ResponsePacketHeader(ResponseHeader(callId, code, data.readableBytes())), PlainBody(data))
+}
+
+fun status(callId: Long, code: StatusCode, body: Body = PlainBody(Unpooled.EMPTY_BUFFER)): Packet<ResponseHeader> {
+    return Packet(ResponsePacketHeader(ResponseHeader(callId, code, body.data().readableBytes())), body)
 }
