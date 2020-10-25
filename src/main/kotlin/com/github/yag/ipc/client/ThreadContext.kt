@@ -33,20 +33,26 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class ThreadContext private constructor(private val config: ThreadContextConfig, val timer: Timer = Timer(true), val eventLoop: EventLoopGroup = PlatformEventLoopGroup(config.eventLoopThreads).instance) {
+class ThreadContext(private val config: ThreadContextConfig) {
 
     var refCnt = 1
         private set
 
-    internal val queue = LinkedBlockingQueue<Call<*>>()
+    val timer: Timer = Timer(true)
 
-    internal var left: Call<*>? = null
+    val eventLoop: EventLoopGroup = PlatformEventLoopGroup(config.eventLoopThreads).instance
+
+    private val queue = LinkedBlockingQueue<Call<*>>()
 
     internal val flusher: Daemon<*> = daemon("flusher") { shouldStop ->
         while (!shouldStop.get()) {
             try {
                 val batch = poll()
-                batch.first.writeAndFlush(batch.second)
+                batch.groupBy {
+                    it.client
+                }.forEach { (t, u) ->
+                    t.writeAndFlush(u.map { it.pendingRequest.request.packet })
+                }
             } catch (e: InterruptedException) {
                 //:<
             } catch (e: Exception) {
@@ -59,34 +65,35 @@ class ThreadContext private constructor(private val config: ThreadContextConfig,
 
     internal val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
 
-    private fun poll(): Pair<RawIPCClient<*>, ArrayList<Packet<RequestHeader>>> {
-        val list = ArrayList<Packet<RequestHeader>>()
+    internal fun offer(call: Call<*>) {
+        check(queue.offer(call))
+        LOG.trace("Offer: {}.", call.pendingRequest.request)
+    }
+
+    private fun poll(): List<Call<*>> {
+        val list = ArrayList<Call<*>>()
         var length = 0L
 
-        val firstCall = left?:queue.take()
+        val firstCall = queue.take()
+        list.add(firstCall)
+
         var packet = firstCall.pendingRequest.request.packet
-        val client = firstCall.client
-        list.add(packet)
         length += packet.body.data().readableBytes()
 
         while (true) {
             val call = queue.poll()
             if (call != null) {
-                if (call.client == client) {
-                    packet = call.pendingRequest.request.packet
-                    list.add(packet)
-                    length += packet.body.data().readableBytes()
-                    if (length >= config.maxWriteBatchSize) {
-                        break
-                    }
-                } else {
-                    left = call
+                packet = call.pendingRequest.request.packet
+                list.add(call)
+                length += packet.body.data().readableBytes()
+                if (length >= config.maxWriteBatchSize) {
+                    break
                 }
             } else {
                 break
             }
         }
-        return client to list
+        return list
     }
 
     fun retain() : ThreadContext {

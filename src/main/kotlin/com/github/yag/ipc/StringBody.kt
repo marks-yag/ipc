@@ -19,22 +19,12 @@ package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
-import java.nio.ByteBuffer
-import java.nio.charset.Charset
 
-data class PlainBody(private val body: ByteBuf) : Body {
+data class StringBody(val data: String) : Body {
 
-    constructor(array: ByteArray) : this(Unpooled.wrappedBuffer(array))
-
-    constructor(buf: ByteBuffer) : this(Unpooled.wrappedBuffer(buf))
+    private val buf = Unpooled.wrappedBuffer(data.toByteArray(Charsets.UTF_8))
 
     override fun data(): ByteBuf {
-        return body
+        return buf
     }
-
-    companion object {
-        @JvmStatic
-        val EMPTY = PlainBody(Unpooled.EMPTY_BUFFER)
-    }
-
 }
