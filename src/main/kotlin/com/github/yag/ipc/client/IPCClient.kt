@@ -33,6 +33,7 @@ import io.netty.buffer.Unpooled
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
+import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
@@ -63,7 +64,11 @@ class IPCClient<T : Any>(
 
     private val lock = ReentrantReadWriteLock()
 
-    private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
+    private val retry = Retry(config.connectRetry, config.connectBackOff, object : DefaultErrorHandler() {
+        override fun isStacktraceRequired(t: Throwable): Boolean {
+            return t !is ConnectException
+        }
+    }, config.backOffRandomRange)
 
     private val timer = threadContext.timer
 
