@@ -20,8 +20,6 @@ package com.github.yag.ipc.client
 import com.github.yag.config.ConfigLoader
 import com.github.yag.config.Configuration
 import com.github.yag.ipc.Daemon
-import com.github.yag.ipc.Packet
-import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.daemon
 import io.netty.channel.EventLoopGroup
 import org.slf4j.LoggerFactory
@@ -44,7 +42,7 @@ class ThreadContext(private val config: ThreadContextConfig) {
 
     private val queue = LinkedBlockingQueue<Call<*>>()
 
-    internal val flusher: Daemon<*> = daemon("flusher") { shouldStop ->
+    private val flusher: Daemon<*> = daemon("flusher") { shouldStop ->
         while (!shouldStop.get()) {
             try {
                 val batch = poll()

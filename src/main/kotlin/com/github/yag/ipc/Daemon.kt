@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal class Daemon<T : Runnable>(
     name: String,
     private val interruptable: Boolean = true,
-    private val runnable: (AtomicBoolean) -> T
+    val runnable: (AtomicBoolean) -> T
 ) : Thread(name), AutoCloseable {
 
     private var shouldShop = AtomicBoolean(false)

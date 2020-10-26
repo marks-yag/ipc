@@ -38,9 +38,6 @@ class IPCClientConfig {
     var heartbeatTimeoutMs: Long = 10_000
 
     @Value
-    var maxWriteBatchSize: Int = 8192
-
-    @Value
     var channel = ChannelConfig()
 
     @Value

@@ -25,7 +25,6 @@ import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import io.netty.buffer.Unpooled
 import kotlin.test.AfterTest
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

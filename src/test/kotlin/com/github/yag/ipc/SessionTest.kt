@@ -28,7 +28,6 @@ import io.netty.buffer.Unpooled
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -78,7 +77,7 @@ class SessionTest {
 
     @Test
     fun testSessionIdWithReconnect() {
-        var sessionIdList = ArrayList<String>()
+        val sessionIdList = ArrayList<String>()
         server<String> {
             connection {
                 add {

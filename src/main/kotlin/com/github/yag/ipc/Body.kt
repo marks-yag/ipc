@@ -18,12 +18,13 @@
 package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
+import java.nio.ByteBuffer
 
 interface Body {
 
     fun data() : ByteBuf
 
-    fun nioBufferData() = data().nioBuffer()
+    fun nioBufferData() : ByteBuffer = data().nioBuffer()
 
     fun arrayData() : ByteArray {
         val buf = data()

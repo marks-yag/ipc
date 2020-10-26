@@ -20,7 +20,7 @@ package com.github.yag.ipc
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import java.nio.ByteBuffer
-import java.nio.charset.Charset
+
 
 data class PlainBody(private val body: ByteBuf) : Body {
 

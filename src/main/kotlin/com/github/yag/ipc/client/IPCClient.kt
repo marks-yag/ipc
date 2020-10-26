@@ -23,7 +23,6 @@ import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody
 import com.github.yag.ipc.Prompt
-import com.github.yag.ipc.RequestHeader
 import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.StatusCode
 import com.github.yag.ipc.status
@@ -60,7 +59,7 @@ class IPCClient<T : Any>(
     private val id: String
 ) : AutoCloseable {
 
-    private val LOG: Logger = LoggerFactory.getLogger("${IPCClient::class.java}-$id")
+    private val logger: Logger = LoggerFactory.getLogger("${IPCClient::class.java}-$id")
 
     private val lock = ReentrantReadWriteLock()
 
@@ -185,7 +184,7 @@ class IPCClient<T : Any>(
     /**
      * Send request packet to server.
      * @param type call type
-     * @param data request body
+     * @param body request body
      * @return response packet
      */
     fun sendSync(type: RequestType<T>, body: Body): Packet<ResponseHeader> {
@@ -237,20 +236,20 @@ class IPCClient<T : Any>(
 
             client = try {
                 retry.call {
-                    RawIPCClient<T>(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
+                    RawIPCClient(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
                         monitor.runner.notifyInactive(this)
                     }
                 }.also {
-                    LOG.info("Connection recovered, re-send all pending calls.")
+                    logger.info("Connection recovered, re-send all pending calls.")
                     for (call in pendingRequests.values) {
-                        LOG.debug("Re-send {}.", call.request)
+                        logger.debug("Re-send {}.", call.request)
                         it.send(call.request.type, call.request.packet, call.callback.func)
                     }
                 }
             } catch (e: IOException) {
-                LOG.warn("Connection recovery failed, make all pending calls fail.")
+                logger.warn("Connection recovery failed, make all pending calls fail.")
                 for (call in pendingRequests.values) {
-                    LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
+                    logger.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
                     call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
                 }
                 pendingRequests.forEach {

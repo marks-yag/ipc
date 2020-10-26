@@ -75,7 +75,7 @@ import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
 internal class RawIPCClient<T : Any>(
-    private var endpoint: InetSocketAddress,
+    endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
     private val threadContext: ThreadContext,
     private val promptHandler: (Prompt) -> ByteArray,
@@ -83,12 +83,12 @@ internal class RawIPCClient<T : Any>(
     private val currentCallId: AtomicLong,
     private val pendingRequests: MutableMap<Long, PendingRequest<T>>,
     metric: MetricRegistry,
-    private val id: String,
+    id: String,
     private val timer: Timer,
     private val channelInactive: () -> Unit
 ) : AutoCloseable {
 
-    private val LOG: Logger = LoggerFactory.getLogger("${RawIPCClient::class.java}-$id")
+    private val logger: Logger = LoggerFactory.getLogger("${RawIPCClient::class.java}-$id")
 
     private val bootstrap: Bootstrap
 
@@ -145,10 +145,10 @@ internal class RawIPCClient<T : Any>(
             }
         }
 
-        LOG.debug("New ipc client created.")
+        logger.debug("New ipc client created.")
         try {
             connection = connectFuture.get()
-            LOG.debug("New ipc client connection accepted: {}.", connection.connectionId)
+            logger.debug("New ipc client connection accepted: {}.", connection.connectionId)
         } catch (e: ExecutionException) {
             throw e.cause ?: e
         }
@@ -190,7 +190,7 @@ internal class RawIPCClient<T : Any>(
 
         val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
 
-        LOG.trace("Queued: {}, timeout: {}.", request, timeoutMs)
+        logger.trace("Queued: {}, timeout: {}.", request, timeoutMs)
 
         if (timeoutMs > 0) {
             timer.schedule(object : TimerTask() {
@@ -212,15 +212,15 @@ internal class RawIPCClient<T : Any>(
             }
             flush()
         } else {
-            LOG.trace("Ignore packets because client was closed: {}.", packets)
+            logger.trace("Ignore packets because client was closed: {}.", packets)
         }
     }
 
     private fun write(packet: Packet<RequestHeader>) {
         channel.write(packet).addListener {
             threadContext.parallelRequestContentSize.release(packet.header.thrift.contentLength)
-            if (LOG.isTraceEnabled) {
-                LOG.trace(
+            if (logger.isTraceEnabled) {
+                logger.trace(
                     "Released {} then {}.",
                     packet.header.thrift.contentLength,
                     threadContext.parallelRequestContentSize.availablePermits()
@@ -231,21 +231,21 @@ internal class RawIPCClient<T : Any>(
 
     private fun timeout(callId: Long) {
         pendingRequests.remove(callId)?.let {
-            LOG.debug("Timeout: {}.", callId)
+            logger.debug("Timeout: {}.", callId)
             it.doResponse(status(callId, StatusCode.TIMEOUT))
         }
     }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
-            LOG.info("IPC client closing...")
+            logger.info("IPC client closing...")
             try {
                 channel.close().sync()
             } catch (e: Exception) {
-                LOG.warn("Close channel failed.")
+                logger.warn("Close channel failed.")
             }
 
-            LOG.info("IPC client closed, make all pending requests timeout.")
+            logger.info("IPC client closed, make all pending requests timeout.")
         }
     }
 
@@ -278,7 +278,7 @@ internal class RawIPCClient<T : Any>(
                 if (!packet.isHeartbeat()) {
                     out.add(packet)
                 } else {
-                    LOG.debug("Received heartbeat ack.")
+                    logger.debug("Received heartbeat ack.")
                     lastContact = System.currentTimeMillis()
                     buf.release()
                 }
@@ -292,7 +292,7 @@ internal class RawIPCClient<T : Any>(
             val packet = msg as Packet<ResponseHeader>
 
             val header = packet.header
-            LOG.trace(
+            logger.trace(
                 "Received response, connectionId: {}, requestId: {}.",
                 connection.connectionId,
                 header.thrift.callId
@@ -309,7 +309,7 @@ internal class RawIPCClient<T : Any>(
                     threadContext.parallelCalls.release()
                 } else {
                     it.callback.lastContactTimestamp = System.currentTimeMillis()
-                    LOG.trace(
+                    logger.trace(
                         "Continue, connectionId: {}, requestId: {}.",
                         connection.connectionId,
                         header.thrift.callId
@@ -331,11 +331,11 @@ internal class RawIPCClient<T : Any>(
                 @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
                 when (event.state()) {
                     IdleState.READER_IDLE, IdleState.ALL_IDLE -> {
-                        LOG.debug("Channel heartbeat timeout.")
+                        logger.debug("Channel heartbeat timeout.")
                         ctx.channel().close()
                     }
                     IdleState.WRITER_IDLE -> {
-                        LOG.debug("Send heartbeat.")
+                        logger.debug("Send heartbeat.")
                         ctx.channel().writeAndFlush(
                             Packet.requestHeartbeat
                         ).addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
@@ -347,7 +347,7 @@ internal class RawIPCClient<T : Any>(
         @Suppress("DEPRECATION", "OverridingDeprecatedMember")
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
             super.exceptionCaught(ctx, cause)
-            LOG.error("Unknown exception.", cause)
+            logger.error("Unknown exception.", cause)
         }
     }
 
