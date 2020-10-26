@@ -63,7 +63,7 @@ class IPCClient<T : Any>(
 
     private val retry = Retry(config.connectRetry, config.connectBackOff, DefaultErrorHandler(), config.backOffRandomRange)
 
-    private val timer = Timer()
+    private val timer = Timer(true)
 
     private val currentCallId = AtomicLong()
 
