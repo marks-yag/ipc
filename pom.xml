@@ -38,8 +38,8 @@
         <kotlin.version>1.4.10</kotlin.version>
         <kotlin.code.style>official</kotlin.code.style>
         <junit.version>4.13.1</junit.version>
-        <config.version>0.10.2</config.version>
-        <retry.version>0.5.5</retry.version>
+        <config.version>0.11.0</config.version>
+        <retry.version>0.5.6</retry.version>
         <punner.version>0.9.16</punner.version>
 
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -106,7 +106,7 @@
 
         <dependency>
             <groupId>com.github.marks-yag</groupId>
-            <artifactId>config-core</artifactId>
+            <artifactId>config-annotation</artifactId>
             <version>${config.version}</version>
         </dependency>
 
