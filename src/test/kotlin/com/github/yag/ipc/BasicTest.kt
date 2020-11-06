@@ -77,7 +77,6 @@ class BasicTest {
 
                     assertEquals(StatusCode.OK, it.status())
                     val body = it.body()
-                    assertEquals(1, body.refCnt())
                     assertEquals(responseData, body)
 
                     responseData.release()
