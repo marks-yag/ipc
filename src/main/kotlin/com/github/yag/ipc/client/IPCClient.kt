@@ -94,6 +94,7 @@ class IPCClient<T : Any>(
             sessionId = client.connection.sessionId
         } catch (e: Exception) {
             threadContext.release()
+            monitor.close()
             throw e
         }
     }
