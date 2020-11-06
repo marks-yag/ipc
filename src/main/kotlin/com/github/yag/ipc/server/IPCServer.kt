@@ -18,7 +18,6 @@
 package com.github.yag.ipc.server
 
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.crypto.toBase64
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejectException
@@ -65,6 +64,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
 import java.security.SecureRandom
+import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -202,7 +202,7 @@ class IPCServer internal constructor(
                 } else {
                     val id = ByteArray(config.sessionIdLength)
                     random.nextBytes(id)
-                    id.toBase64()
+                    Base64.getEncoder().encodeToString(id)
                 }
 
                 try {

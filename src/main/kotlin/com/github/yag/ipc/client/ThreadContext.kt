@@ -17,14 +17,10 @@
 
 package com.github.yag.ipc.client
 
-import com.github.yag.config.ConfigLoader
-import com.github.yag.config.Configuration
 import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.daemon
 import io.netty.channel.EventLoopGroup
 import org.slf4j.LoggerFactory
-import java.io.IOException
-import java.util.Properties
 import java.util.Timer
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Semaphore
@@ -122,26 +118,19 @@ class ThreadContext(private val config: ThreadContextConfig) {
 
         internal var cache: ThreadContext? = null
 
+        var defaultConfig = ThreadContextConfig()
+
         fun getDefault() : ThreadContext {
             return lock.withLock {
                 var c = cache
                 if (c == null || c.refCnt == 0) {
-                    c = ThreadContext(getConfig())
+                    c = ThreadContext(defaultConfig)
                     cache = c
                 } else {
                     c.retain()
                 }
                 c
             }
-        }
-
-        private fun getConfig() : ThreadContextConfig {
-            val prop = try {
-                ConfigLoader.load("ipc.client.thread.context.conf")
-            } catch (e: IOException) {
-                Properties()
-            }
-            return Configuration(prop).get(ThreadContextConfig::class.java)
         }
 
     }
