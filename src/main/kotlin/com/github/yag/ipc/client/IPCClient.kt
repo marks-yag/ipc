@@ -19,13 +19,13 @@ package com.github.yag.ipc.client
 
 import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.Body
-import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody
 import com.github.yag.ipc.Prompt
 import com.github.yag.ipc.ResponseHeader
 import com.github.yag.ipc.StatusCode
 import com.github.yag.ipc.status
+import com.github.yag.retry.Checker
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry
 import io.netty.buffer.ByteBuf
@@ -40,6 +40,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
 
@@ -68,6 +69,10 @@ class IPCClient<T : Any>(
         override fun isStacktraceRequired(t: Throwable): Boolean {
             return t !is ConnectException
         }
+    }, object: Checker {
+        override fun check(): Boolean {
+            return !reconnectDisabled
+        }
     }, config.backOffRandomRange)
 
     private val timer = threadContext.timer
@@ -76,11 +81,12 @@ class IPCClient<T : Any>(
 
     private val pendingRequests = ConcurrentSkipListMap<Long, PendingRequest<T>>()
 
-    private var monitor: Daemon<Monitor> = Daemon("connection-monitor") {
-        Monitor(it)
-    }.also { it.start() }
-
     private var client: RawIPCClient<T>
+
+    @Volatile
+    private var reconnectDisabled = false
+
+    private val reconnectingThread = AtomicReference<Thread>()
 
     val sessionId: String
 
@@ -88,13 +94,13 @@ class IPCClient<T : Any>(
         try {
             client = retry.call {
                 RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer) {
-                    monitor.runner.notifyInactive(this)
+                    // Reconnecting should not run in I/O threads (eventloop)
+                    threadContext.onBroken(this)
                 }
             }
             sessionId = client.connection.sessionId
         } catch (e: Exception) {
             threadContext.release()
-            monitor.close()
             throw e
         }
     }
@@ -228,6 +234,7 @@ class IPCClient<T : Any>(
     }
 
     internal fun recover() {
+        if (reconnectDisabled) return
         lock.writeLock().withLock {
             client.close()
             threadContext.parallelCalls.release(pendingRequests.size)
@@ -240,10 +247,11 @@ class IPCClient<T : Any>(
                 pendingRequests.remove(it.key)
             }
 
+            reconnectingThread.set(Thread.currentThread())
             client = try {
                 retry.call {
                     RawIPCClient(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
-                        monitor.runner.notifyInactive(this)
+                        threadContext.onBroken(this)
                     }
                 }.also {
                     logger.info("Connection recovered, re-send all pending calls.")
@@ -263,6 +271,8 @@ class IPCClient<T : Any>(
                 }
                 pendingRequests.clear()
                 throw e
+            } finally {
+                reconnectingThread.set(null)
             }
         }
     }
@@ -271,7 +281,8 @@ class IPCClient<T : Any>(
      * Close IPC client and release all related resources..
      */
     override fun close() {
-        monitor.close()
+        reconnectDisabled = true
+        reconnectingThread.get()?.interrupt()
         lock.readLock().withLock {
             client.close()
         }

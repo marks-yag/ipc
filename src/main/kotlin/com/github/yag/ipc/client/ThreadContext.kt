@@ -22,13 +22,16 @@ import com.github.yag.ipc.daemon
 import io.netty.channel.EventLoopGroup
 import org.slf4j.LoggerFactory
 import java.util.Timer
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 class ThreadContext(private val config: ThreadContextConfig) {
 
+    @Volatile
     var refCnt = 1
         private set
 
@@ -37,6 +40,8 @@ class ThreadContext(private val config: ThreadContextConfig) {
     val eventLoop: EventLoopGroup = PlatformEventLoopGroup(config.eventLoopThreads).instance
 
     private val queue = LinkedBlockingQueue<Call<*>>()
+
+    private val reconnectExecutor = Executors.newCachedThreadPool()
 
     private val flusher: Daemon<*> = daemon("flusher") { shouldStop ->
         while (!shouldStop.get()) {
@@ -90,6 +95,16 @@ class ThreadContext(private val config: ThreadContextConfig) {
         return list
     }
 
+    internal fun onBroken(client: IPCClient<*>) {
+        reconnectExecutor.execute {
+            try {
+                client.recover()
+            } catch (e: Exception) {
+                LOG.warn("Recover failed: {}.", e.toString())
+            }
+        }
+    }
+
     fun retain() : ThreadContext {
         return lock.withLock {
             check(refCnt > 0)
@@ -105,6 +120,8 @@ class ThreadContext(private val config: ThreadContextConfig) {
             if (refCnt == 0) {
                 eventLoop.shutdownGracefully()
                 flusher.close()
+                reconnectExecutor.shutdown()
+                reconnectExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
             }
             this
         }
