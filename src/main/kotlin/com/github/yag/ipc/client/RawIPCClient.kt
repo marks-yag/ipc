@@ -183,7 +183,7 @@ internal class RawIPCClient<T : Any>(
         })
 
         val callId = header.callId
-        val pendingRequest = PendingRequest(request, Callback(timestamp, callback))
+        val pendingRequest = PendingRequest(request, CallbackInfo(timestamp, callback))
         pendingRequests[callId] = pendingRequest
 
         threadContext.offer(Call(this, pendingRequest))

@@ -20,7 +20,7 @@ package com.github.yag.ipc.client
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.ResponseHeader
 
-internal class PendingRequest<T>(val request: Request<T>, val callback: Callback) {
+internal class PendingRequest<T>(val request: Request<T>, val callback: CallbackInfo) {
 
     fun doResponse(response: Packet<ResponseHeader>) {
         request.packet.use {
