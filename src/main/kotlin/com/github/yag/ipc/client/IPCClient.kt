@@ -120,11 +120,31 @@ class IPCClient<T : Any>(
     /**
      * Send request packet to server.
      * @param type call type
+     * @param body request body
+     * @param callback code block to handle response packet
+     */
+    fun send(type: RequestType<T>, body: Body, callback: Callback) {
+        send(type, body, callback::doCallback)
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
      * @param data request data
      * @param callback code block to handle response packet
      */
     fun send(type: RequestType<T>, data: ByteBuf, callback: (Packet<ResponseHeader>) -> Any?) {
         send(type, PlainBody(data), callback)
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @param callback code block to handle response packet
+     */
+    fun send(type: RequestType<T>, data: ByteBuf, callback: Callback) {
+        send(type, PlainBody(data), callback::doCallback)
     }
 
     /**
@@ -143,8 +163,28 @@ class IPCClient<T : Any>(
      * @param data request data
      * @param callback code block to handle response packet
      */
+    fun send(type: RequestType<T>, data: ByteBuffer, callback: Callback) {
+        send(type, Unpooled.wrappedBuffer(data), callback::doCallback)
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @param callback code block to handle response packet
+     */
     fun send(type: RequestType<T>, data: ByteArray, callback: (Packet<ResponseHeader>) -> Any?) {
         send(type, Unpooled.wrappedBuffer(data), callback)
+    }
+
+    /**
+     * Send request packet to server.
+     * @param type call type
+     * @param data request data
+     * @param callback code block to handle response packet
+     */
+    fun send(type: RequestType<T>, data: ByteArray, callback: Callback) {
+        send(type, Unpooled.wrappedBuffer(data), callback::doCallback)
     }
 
     /**
