@@ -99,8 +99,10 @@ class ThreadContext(private val config: ThreadContextConfig) {
         reconnectExecutor.execute {
             try {
                 client.recover()
+            } catch (e: InterruptedException) {
+                LOG.debug("Recover cancelled.")
             } catch (e: Exception) {
-                LOG.warn("Recover failed: {}.", e.toString())
+                LOG.warn("Recover failed.", e)
             }
         }
     }
