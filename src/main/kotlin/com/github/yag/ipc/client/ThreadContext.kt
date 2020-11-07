@@ -20,6 +20,12 @@ package com.github.yag.ipc.client
 import com.github.yag.ipc.Daemon
 import com.github.yag.ipc.daemon
 import io.netty.channel.EventLoopGroup
+import io.netty.channel.epoll.Epoll
+import io.netty.channel.epoll.EpollEventLoopGroup
+import io.netty.channel.kqueue.KQueue
+import io.netty.channel.kqueue.KQueueEventLoopGroup
+import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.util.concurrent.DefaultThreadFactory
 import org.slf4j.LoggerFactory
 import java.util.Timer
 import java.util.concurrent.Executors
@@ -37,7 +43,7 @@ class ThreadContext(private val config: ThreadContextConfig) {
 
     val timer: Timer = Timer(true)
 
-    val eventLoop: EventLoopGroup = PlatformEventLoopGroup(config.eventLoopThreads).instance
+    val eventLoop: EventLoopGroup = createEventLoopGroup(config.eventLoopThreads)
 
     private val queue = LinkedBlockingQueue<Call<*>>()
 
@@ -149,6 +155,21 @@ class ThreadContext(private val config: ThreadContextConfig) {
                     c.retain()
                 }
                 c
+            }
+        }
+
+        internal fun createEventLoopGroup(threads: Int) : EventLoopGroup {
+            val threadFactory = DefaultThreadFactory("executor", true)
+            return when {
+                Epoll.isAvailable() -> {
+                    EpollEventLoopGroup(threads, threadFactory)
+                }
+                KQueue.isAvailable() -> {
+                    KQueueEventLoopGroup(threads, threadFactory)
+                }
+                else -> {
+                    NioEventLoopGroup(threads, threadFactory)
+                }
             }
         }
 
