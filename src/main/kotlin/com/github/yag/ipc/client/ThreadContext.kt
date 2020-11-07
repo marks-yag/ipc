@@ -101,16 +101,8 @@ class ThreadContext(private val config: ThreadContextConfig) {
         return list
     }
 
-    internal fun onBroken(client: IPCClient<*>) {
-        reconnectExecutor.execute {
-            try {
-                client.recover()
-            } catch (e: InterruptedException) {
-                LOG.debug("Recover cancelled.")
-            } catch (e: Exception) {
-                LOG.warn("Recover failed.", e)
-            }
-        }
+    internal fun execute(runnable: Runnable) {
+        reconnectExecutor.execute(runnable)
     }
 
     fun retain() : ThreadContext {

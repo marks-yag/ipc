@@ -95,13 +95,25 @@ class IPCClient<T : Any> internal constructor(
             client = retry.call {
                 RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer) {
                     // Reconnecting should not run in I/O threads (eventloop)
-                    threadContext.onBroken(this)
+                    recoveryAsync()
                 }
             }
             sessionId = client.connection.sessionId
         } catch (e: Exception) {
             threadContext.release()
             throw e
+        }
+    }
+
+    private fun recoveryAsync() {
+        threadContext.execute {
+            try {
+                recover()
+            } catch (e: InterruptedException) {
+                logger.debug("Recover cancelled.")
+            } catch (e: Exception) {
+                logger.warn("Recover failed.", e)
+            }
         }
     }
 
@@ -291,7 +303,7 @@ class IPCClient<T : Any> internal constructor(
             client = try {
                 retry.call {
                     RawIPCClient(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
-                        threadContext.onBroken(this)
+                        recoveryAsync()
                     }
                 }.also {
                     logger.info("Connection recovered, re-send all pending calls.")
