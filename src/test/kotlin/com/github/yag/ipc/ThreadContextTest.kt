@@ -141,7 +141,7 @@ class ThreadContextTest {
         val tc = ThreadContext(ThreadContextConfig())
         val clients = Array(threads) {
             client<String>(servers[it].endpoint) {
-                threadContext = tc.retain()
+                threadContext(tc.retain())
             }
         }
 

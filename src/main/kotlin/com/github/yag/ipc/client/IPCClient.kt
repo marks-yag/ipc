@@ -52,7 +52,7 @@ import kotlin.concurrent.withLock
  * @property metric metric registry
  * @property id client id, will be used in log and thread name.
  */
-class IPCClient<T : Any>(
+class IPCClient<T : Any> internal constructor(
     private var endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
     private val threadContext: ThreadContext,

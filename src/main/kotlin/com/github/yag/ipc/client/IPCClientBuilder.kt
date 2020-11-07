@@ -22,11 +22,12 @@ import com.github.yag.ipc.Prompt
 import java.net.InetSocketAddress
 import java.util.UUID
 
-class IPCClientBuilder<T: Any>(private var endpoint: InetSocketAddress, val config: IPCClientConfig = IPCClientConfig()) {
+class IPCClientBuilder<T: Any>
+    @JvmOverloads constructor(private var endpoint: InetSocketAddress, val config: IPCClientConfig = IPCClientConfig()) {
 
-    var threadContext: ThreadContext? = null
+    private var threadContext: ThreadContext? = null
 
-    var promptHandler: (Prompt) -> ByteArray = {
+    private var promptHandler: (Prompt) -> ByteArray = {
         ByteArray(0)
     }
 
@@ -34,12 +35,23 @@ class IPCClientBuilder<T: Any>(private var endpoint: InetSocketAddress, val conf
 
     var id: String = UUID.randomUUID().toString()
 
-    fun config(init: IPCClientConfig.() -> Unit) {
+    fun config(init: IPCClientConfig.() -> Unit) : IPCClientBuilder<T> {
         config.init()
+        return this
     }
 
-    fun prompt(handler: (Prompt) -> ByteArray) {
-        promptHandler = handler
+    fun threadContext(threadContext: ThreadContext?) : IPCClientBuilder<T> {
+        this.threadContext = threadContext
+        return this
+    }
+
+    fun prompt(handler: (Prompt) -> ByteArray) : IPCClientBuilder<T> {
+        this.promptHandler = handler
+        return this
+    }
+
+    fun prompt(handler: PromptHandler) : IPCClientBuilder<T> {
+        return prompt(handler::handle)
     }
 
     fun build() : IPCClient<T> {
