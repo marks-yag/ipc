@@ -31,27 +31,32 @@ class IPCClientBuilder<T: Any>
         ByteArray(0)
     }
 
-    var metric: MetricRegistry = MetricRegistry()
+    private var metric: MetricRegistry = MetricRegistry()
 
-    var id: String = UUID.randomUUID().toString()
+    private var id: String = UUID.randomUUID().toString()
 
-    fun config(init: IPCClientConfig.() -> Unit) : IPCClientBuilder<T> {
+    fun config(init: IPCClientConfig.() -> Unit) = apply {
         config.init()
-        return this
     }
 
-    fun threadContext(threadContext: ThreadContext?) : IPCClientBuilder<T> {
+    fun threadContext(threadContext: ThreadContext?) = apply {
         this.threadContext = threadContext
-        return this
     }
 
-    fun prompt(handler: (Prompt) -> ByteArray) : IPCClientBuilder<T> {
+    fun prompt(handler: (Prompt) -> ByteArray) = apply {
         this.promptHandler = handler
-        return this
     }
 
-    fun prompt(handler: PromptHandler) : IPCClientBuilder<T> {
-        return prompt(handler::handle)
+    fun prompt(handler: PromptHandler) = apply {
+        prompt(handler::handle)
+    }
+
+    fun metric(metric: MetricRegistry) = apply {
+        this.metric = metric
+    }
+
+    fun id(id: String) = apply {
+        this.id = id
     }
 
     fun build() : IPCClient<T> {

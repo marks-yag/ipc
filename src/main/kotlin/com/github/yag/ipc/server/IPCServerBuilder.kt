@@ -24,34 +24,48 @@ class IPCServerBuilder<T : Any>(
     private var ipcServerConfig: IPCServerConfig
 ) {
 
-    var id: String = UUID.randomUUID().toString()
+    private var id: String = UUID.randomUUID().toString()
 
-    var metric: MetricRegistry = MetricRegistry()
+    private var metric: MetricRegistry = MetricRegistry()
 
-    var rootHandler = RootRequestHandler<T>()
+    private val rootHandler = RootRequestHandler<T>()
 
-    var connectionHandler = ChainConnectionHandler()
+    private var connectionHandler = ChainConnectionHandler()
 
-    var promptData: () -> ByteArray = { ByteArray(0) }
+    private var promptGenerator = {
+        ByteArray(0)
+    }
 
-    fun config(init: IPCServerConfig.() -> Unit) {
+    fun config(init: IPCServerConfig.() -> Unit) = apply {
         ipcServerConfig.init()
     }
 
-    fun connection(init: ChainConnectionHandler.() -> Unit) {
+    fun connection(init: ChainConnectionHandler.() -> Unit) = apply {
         connectionHandler.init()
     }
 
-    fun request(init: RootRequestHandler<T>.() -> Unit) {
+    fun request(init: RootRequestHandler<T>.() -> Unit) = apply {
         rootHandler.init()
     }
 
-    fun prompt(data: () -> ByteArray) {
-        promptData = data
+    fun prompt(promptGenerator: () -> ByteArray) = apply {
+        this.promptGenerator = promptGenerator
+    }
+
+    fun prompt(promptGenerator: PromptGenerator) = apply {
+        this.promptGenerator = promptGenerator::generate
+    }
+
+    fun id(id: String) = apply {
+        this.id = id
+    }
+
+    fun metric(metric: MetricRegistry) = apply {
+        this.metric = metric
     }
 
     fun build(): IPCServer {
-        return IPCServer(ipcServerConfig, rootHandler, connectionHandler, promptData, metric, id)
+        return IPCServer(ipcServerConfig, rootHandler, connectionHandler, promptGenerator, metric, id)
     }
 }
 

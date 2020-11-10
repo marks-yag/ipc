@@ -46,7 +46,7 @@ object IPCSmokeServer {
 
         while (true) {
             val server = server<CallType>(config.ipc) {
-                this.metric = metric
+                metric(metric)
                 request {
                     CallType.values().forEach { callType ->
                         map(callType) {

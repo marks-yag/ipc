@@ -75,7 +75,7 @@ class IPCServer internal constructor(
     private val config: IPCServerConfig,
     private val requestHandler: RequestHandler,
     private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
-    private val promptData: () -> ByteArray,
+    private val promptGenerator: () -> ByteArray,
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
@@ -157,7 +157,8 @@ class IPCServer internal constructor(
         override fun initChannel(socketChannel: SocketChannel) {
             logger.debug("New tcp connection arrived.")
 
-            val connection = Connection(UUID.randomUUID().toString(), promptData())
+            val promptData = promptGenerator()
+            val connection = Connection(UUID.randomUUID().toString(), promptData)
 
             socketChannel.pipeline().apply {
                 addLast(ReadTimeoutHandler(config.maxIdleTimeMs, TimeUnit.MILLISECONDS))
@@ -175,7 +176,7 @@ class IPCServer internal constructor(
                 addLast(RequestDispatcher(connection))
             }
 
-            socketChannel.writeAndFlush(Prompt("V1", ByteBuffer.wrap(promptData())))
+            socketChannel.writeAndFlush(Prompt("V1", ByteBuffer.wrap(promptData)))
         }
 
     }

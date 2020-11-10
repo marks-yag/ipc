@@ -73,8 +73,8 @@ object IPCSmokeClient {
                 try {
                     retry.call {
                         client<CallType>(endpoint, config.ipc) {
-                            this.metric = metric
-                            this.id = "ipc-client"
+                            metric(metric)
+                            id("ipc-client")
                         }
                     }.use { client ->
                         LOG.info("Create new client, alive for {}ms.", aliveMs)

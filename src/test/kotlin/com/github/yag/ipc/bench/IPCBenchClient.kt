@@ -53,7 +53,7 @@ object IPCBenchClient {
         repeat(config.clients) {
             thread {
                 client<CallType>(endpoint, config.ipc) {
-                    this.metric = metric
+                    metric(metric)
                 }.use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
