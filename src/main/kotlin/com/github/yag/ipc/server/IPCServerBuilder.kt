@@ -40,12 +40,24 @@ class IPCServerBuilder<T : Any>(
         ipcServerConfig.init()
     }
 
+    fun config(init: IPCServerConfigurator) = apply {
+        init.configure(ipcServerConfig)
+    }
+
     fun connection(init: ChainConnectionHandler.() -> Unit) = apply {
         connectionHandler.init()
     }
 
+    fun connection(init: ChainConnectionHandlerConfigurator) = apply {
+        init.configure(connectionHandler)
+    }
+
     fun request(init: RootRequestHandler<T>.() -> Unit) = apply {
         rootHandler.init()
+    }
+
+    fun request(init: RootRequestHandlerConfigurator<T>) = apply {
+        init.configure(rootHandler)
     }
 
     fun prompt(promptGenerator: () -> ByteArray) = apply {

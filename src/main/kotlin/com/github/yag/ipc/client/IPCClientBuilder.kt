@@ -39,6 +39,10 @@ class IPCClientBuilder<T: Any>
         config.init()
     }
 
+    fun config(init: IPCClientConfigurator) = apply {
+        init.configure(config)
+    }
+
     fun threadContext(threadContext: ThreadContext?) = apply {
         this.threadContext = threadContext
     }
