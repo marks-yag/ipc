@@ -285,7 +285,7 @@ class IPCClient<T : Any> internal constructor(
         return send(type, Unpooled.wrappedBuffer(data)).get()
     }
 
-    internal fun recover() {
+    private fun recover() {
         if (reconnectDisabled) return
         lock.writeLock().withLock {
             client.close()
