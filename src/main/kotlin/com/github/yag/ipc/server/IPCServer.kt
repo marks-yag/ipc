@@ -56,7 +56,6 @@ import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.traffic.GlobalTrafficShapingHandler
 import io.netty.util.concurrent.DefaultThreadFactory
 import org.jetbrains.annotations.TestOnly
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.BindException
@@ -79,8 +78,6 @@ class IPCServer internal constructor(
     metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
-
-    private val logger: Logger = LoggerFactory.getLogger("${IPCServer::class.java}-$id")
 
     private val serverBootstrap: ServerBootstrap
 
@@ -111,11 +108,11 @@ class IPCServer internal constructor(
 
 
     init {
-        logger.info("Start ipc server.")
+        LOG.info("Start ipc server.")
         serverBootstrap = ServerBootstrap().apply {
             when {
                 Epoll.isAvailable() -> {
-                    logger.debug("Using epoll.")
+                    LOG.debug("Using epoll.")
                     channel(EpollServerSocketChannel::class.java)
                         .group(
                             EpollEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
@@ -123,7 +120,7 @@ class IPCServer internal constructor(
                         )
                 }
                 KQueue.isAvailable() -> {
-                    logger.debug("Using kqueue.")
+                    LOG.debug("Using kqueue.")
                     channel(KQueueServerSocketChannel::class.java)
                         .group(
                             KQueueEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
@@ -131,7 +128,7 @@ class IPCServer internal constructor(
                         )
                 }
                 else -> {
-                    logger.debug("Using nio.")
+                    LOG.debug("Using nio.")
                     channel(NioServerSocketChannel::class.java)
                         .group(
                             NioEventLoopGroup(config.parentThreads, DefaultThreadFactory("ipc-server-parent-$id", true)),
@@ -144,9 +141,9 @@ class IPCServer internal constructor(
         try {
             channelFuture = serverBootstrap.bind(config.host, config.port).sync()
             endpoint = channelFuture.channel().localAddress() as InetSocketAddress
-            logger.info("IPC server started on: {}.", endpoint)
+            LOG.info("IPC server started on: {}.", endpoint)
         } catch (e: BindException) {
-            logger.error("Port conflict: {}.", config.port, e)
+            LOG.error("Port conflict: {}.", config.port, e)
             throw e
         }
     }
@@ -155,7 +152,7 @@ class IPCServer internal constructor(
     inner class ChildChannelHandler : ChannelInitializer<SocketChannel>() {
 
         override fun initChannel(socketChannel: SocketChannel) {
-            logger.debug("New tcp connection arrived.")
+            LOG.debug("New tcp connection arrived.")
 
             val promptData = promptGenerator()
             val connection = Connection(UUID.randomUUID().toString(), promptData)
@@ -187,12 +184,12 @@ class IPCServer internal constructor(
         private var connected = false
 
         override fun decode(ctx: ChannelHandlerContext, buf: ByteBuf, out: MutableList<Any>) {
-            if (logger.isTraceEnabled) {
-                logger.trace("Decode request: ${buf.readableBytes()}, ${ByteBufUtil.hexDump(buf)}")
+            if (LOG.isTraceEnabled) {
+                LOG.trace("Decode request: ${buf.readableBytes()}, ${ByteBufUtil.hexDump(buf)}")
             }
 
             if (!connected) {
-                logger.debug("Handling incoming connect request from: {}.", ctx.channel().remoteAddress())
+                LOG.debug("Handling incoming connect request from: {}.", ctx.channel().remoteAddress())
 
                 connection.remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
                 connection.localAddress = ctx.channel().localAddress() as InetSocketAddress
@@ -209,21 +206,21 @@ class IPCServer internal constructor(
                 try {
                     connectionHandler.handle(connection)
                     connected = true
-                    logger.debug(
+                    LOG.debug(
                         "Connected, connectionId: {}, remoteAddress: {}.",
                         connection.id,
                         connection.remoteAddress
                     )
                     ctx.writeAndFlush(ConnectionResponse(ConnectionResponse.accepted(ConnectionAccepted(connection.id, connection.sessionId))))
                 } catch (e: ConnectionRejectException) {
-                    logger.debug(
+                    LOG.debug(
                         "Reject connection, connectionId: {}, remoteAddress: {}.",
                         connection.id,
                         connection.remoteAddress
                     )
                     handle(ctx, e)
                 } catch (e: Exception) {
-                    logger.warn(
+                    LOG.warn(
                         "Validate connection failed, connectionId: {}, remoteAddress: {}.",
                         connection.id,
                         connection.remoteAddress,
@@ -258,7 +255,7 @@ class IPCServer internal constructor(
         override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
             val packet = msg as Packet<RequestHeader>
             val header = packet.header
-            logger.trace("Handle message, id: {}, requestId: {}.", connection.id, header.thrift.callId)
+            LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, header.thrift.callId)
             requestHandler.handle(connection, packet) {
                 check(it.header.thrift.callId == header.thrift.callId)
 
@@ -272,16 +269,16 @@ class IPCServer internal constructor(
                             it.close()
                         }
                     } catch (e: RejectedExecutionException) {
-                        logger.info("Ignored pending response: {}.", it.header.thrift.callId)
+                        LOG.info("Ignored pending response: {}.", it.header.thrift.callId)
                     }
                 }
-                logger.trace("Send response, id: {}, requestId: {}.", connection.id, it.header.thrift.callId)
+                LOG.trace("Send response, id: {}, requestId: {}.", connection.id, it.header.thrift.callId)
             }
         }
 
         override fun channelReadComplete(ctx: ChannelHandlerContext) {
             super.channelReadComplete(ctx)
-            logger.trace("Read complete and flush data.")
+            LOG.trace("Read complete and flush data.")
             ctx.flush()
         }
 
@@ -289,11 +286,11 @@ class IPCServer internal constructor(
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
             when (cause) {
                 is ReadTimeoutException -> {
-                    logger.info("Connection read timeout, connection: {}.", connection.id)
+                    LOG.info("Connection read timeout, connection: {}.", connection.id)
                 }
                 is ClosedChannelException -> {
-                    if (logger.isDebugEnabled) {
-                        logger.debug(
+                    if (LOG.isDebugEnabled) {
+                        LOG.debug(
                             "Connection closed, connection: {}.",
                             connection.id
                         )
@@ -301,30 +298,30 @@ class IPCServer internal constructor(
                 }
                 is IOException -> {
                     when (cause.message) {
-                        "Broken pipe", "Connection reset by peer" -> logger.debug(
+                        "Broken pipe", "Connection reset by peer" -> LOG.debug(
                             "Connection broken, connection: {}, cause: {}.",
                             connection.id,
                             cause.toString()
                         )
-                        else -> logger.debug("Connection I/O error, connection: {}.", connection.id, cause)
+                        else -> LOG.debug("Connection I/O error, connection: {}.", connection.id, cause)
                     }
 
                 }
                 else -> {
-                    logger.warn("Unknown exception.", cause)
+                    LOG.warn("Unknown exception.", cause)
                 }
             }
         }
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
-            logger.debug("Channel inactive: {}.", connection.id)
+            LOG.debug("Channel inactive: {}.", connection.id)
         }
     }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
-            logger.info("Closing ipc server.")
+            LOG.info("Closing ipc server.")
             trafficExecutor.let {
                 it.shutdown()
                 it.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS)
@@ -334,19 +331,23 @@ class IPCServer internal constructor(
                 requestHandler.close()
             }
 
-            logger.debug("Request handler closed.")
+            LOG.debug("Request handler closed.")
 
             channelFuture.channel().close().sync()
 
-            logger.debug("Channel closed.")
+            LOG.debug("Channel closed.")
 
             serverBootstrap.config().let {
                 it.group().shutdownGracefully()
                 it.childGroup().shutdownGracefully()
             }
 
-            logger.info("IPC server closed.")
+            LOG.info("IPC server closed.")
         }
+    }
+
+    companion object {
+        private val LOG =  LoggerFactory.getLogger(IPCServer::class.java)
     }
 
 }

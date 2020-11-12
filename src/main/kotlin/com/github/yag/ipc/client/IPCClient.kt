@@ -61,8 +61,6 @@ class IPCClient<T : Any> internal constructor(
     private val id: String
 ) : AutoCloseable {
 
-    private val logger: Logger = LoggerFactory.getLogger("${IPCClient::class.java}-$id")
-
     private val lock = ReentrantReadWriteLock()
 
     private val retry = Retry(config.connectRetry, config.connectBackOff, object : DefaultErrorHandler() {
@@ -110,9 +108,9 @@ class IPCClient<T : Any> internal constructor(
             try {
                 recover()
             } catch (e: InterruptedException) {
-                logger.debug("Recover cancelled.")
+                LOG.debug("Recover cancelled.")
             } catch (e: Exception) {
-                logger.warn("Recover failed.", e)
+                LOG.warn("Recover failed.", e)
             }
         }
     }
@@ -306,16 +304,16 @@ class IPCClient<T : Any> internal constructor(
                         recoveryAsync()
                     }
                 }.also {
-                    logger.info("Connection recovered, re-send all pending calls.")
+                    LOG.info("Connection recovered, re-send all pending calls.")
                     for (call in pendingRequests.values) {
-                        logger.debug("Re-send {}.", call.request)
+                        LOG.debug("Re-send {}.", call.request)
                         it.send(call.request.type, call.request.packet, call.callback.func)
                     }
                 }
             } catch (e: IOException) {
-                logger.warn("Connection recovery failed, make all pending calls fail.")
+                LOG.warn("Connection recovery failed, make all pending calls fail.")
                 for (call in pendingRequests.values) {
-                    logger.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
+                    LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
                     call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
                 }
                 pendingRequests.forEach {
@@ -350,6 +348,10 @@ class IPCClient<T : Any> internal constructor(
     }
 
     internal fun getConnection() = client.connection
+
+    companion object {
+        private val LOG = LoggerFactory.getLogger(IPCClient::class.java)
+    }
 
 }
 
