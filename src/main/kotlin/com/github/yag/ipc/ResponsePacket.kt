@@ -33,12 +33,11 @@ fun Packet<ResponseHeader>.isSuccessful(): Boolean = status().isSuccessful()
 
 fun Packet<ResponseHeader>.body(): ByteBuf {
     val status = status()
+    val data = body.data()
     return if (status.isSuccessful()) {
-        body.data()
+        data
     } else {
-        val bodyArray = body.data().use {
-            it.readArray()
-        }
+        val bodyArray = data.readArray()
         when (status) {
             StatusCode.NOT_FOUND -> throw UnsupportedOperationException()
             StatusCode.TIMEOUT -> throw TimeoutException()

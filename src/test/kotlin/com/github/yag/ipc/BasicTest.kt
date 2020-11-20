@@ -137,7 +137,7 @@ class BasicTest {
             assertFailsWith(input.second) {
                 packet.body()
             }
-            assertEquals(0, data.refCnt())
+            assertEquals(1, data.refCnt())
         }
     }
 

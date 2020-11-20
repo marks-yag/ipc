@@ -314,7 +314,11 @@ internal class RawIPCClient<T : Any>(
                         header.thrift.callId
                     )
                 }
-                it.callback.func(packet)
+                try {
+                    it.callback.func(packet)
+                } catch (e: Exception) {
+                    LOG.warn("Callback failed for request: {}", header.thrift.callId, e)
+                }
             }
             packet.close()
         }

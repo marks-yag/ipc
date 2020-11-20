@@ -74,7 +74,7 @@ class ConnectTest {
                     headers["token"] = "foo"
                 }
             }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).use {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
                     assertFailsWith(UnsupportedOperationException::class) {
                         it.body()
@@ -107,7 +107,7 @@ class ConnectTest {
                     "world".toByteArray(Charsets.UTF_8)
                 }
             }.use { client ->
-                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).let {
+                client.sendSync(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER)).use {
                     assertEquals(StatusCode.NOT_FOUND, it.status())
                     assertFailsWith(UnsupportedOperationException::class) {
                         it.body()
