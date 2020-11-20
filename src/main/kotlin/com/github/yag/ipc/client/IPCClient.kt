@@ -292,6 +292,7 @@ class IPCClient<T : Any> internal constructor(
             pendingRequests.filterNot {
                 it.value.request.type.isIdempotent()
             }.forEach {
+                LOG.debug("Make non-idempotent call {} failed.", it.key)
                 it.value.doResponse(status(it.key, StatusCode.CONNECTION_ERROR))
                 it.value.request.packet.close()
                 pendingRequests.remove(it.key)
@@ -314,7 +315,7 @@ class IPCClient<T : Any> internal constructor(
                 LOG.warn("Connection recovery failed, make all pending calls fail.")
                 for (call in pendingRequests.values) {
                     LOG.debug("{} -> {}.", call.request.packet.header.thrift.callId, StatusCode.CONNECTION_ERROR)
-                    call.callback.func(call.request.packet.status(StatusCode.CONNECTION_ERROR))
+                    call.doResponse(call.request.packet.status(StatusCode.CONNECTION_ERROR))
                 }
                 pendingRequests.forEach {
                     it.value.request.packet.close()

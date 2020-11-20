@@ -19,12 +19,19 @@ package com.github.yag.ipc.client
 
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.ResponseHeader
+import org.slf4j.LoggerFactory
 
 internal class PendingRequest<T>(val request: Request<T>, val callback: CallbackInfo) {
 
     fun doResponse(response: Packet<ResponseHeader>) {
-        request.packet.use {
+        try {
             callback.func(response)
+        } catch (e: Exception) {
+            LOG.warn("Callback failed for request: {}", request.packet.header.thrift.callId, e)
         }
+    }
+
+    companion object {
+        private val LOG = LoggerFactory.getLogger(PendingRequest::class.java)
     }
 }
