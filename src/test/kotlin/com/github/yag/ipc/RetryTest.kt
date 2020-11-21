@@ -23,10 +23,14 @@ import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
 import com.github.yag.punner.core.eventually
+import com.github.yag.retry.Retry
 import io.netty.buffer.Unpooled
+import org.slf4j.LoggerFactory
+import java.time.Duration
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -42,46 +46,96 @@ class RetryTest {
      * Test client can reconnect to server and make remote calls.
      */
     @Test
-    fun testCallRetrySuccessWhenClientReconnect() {
-        var ignore = true
+    fun testIdempotentCallRetrySuccessWhenClientReconnect() {
         server<String> {
             request {
                 set("foo") { _, request, echo ->
-                    if (!ignore) {
-                        echo(request.ok())
-                    }
+                    echo(request.ok())
                 }
             }
         }.use { server ->
-            server.ignoreHeartbeat = true
-
             client<String>(server.endpoint) {
                 config {
-                    heartbeatIntervalMs = 500
-                    heartbeatTimeoutMs = 1000
-
                     requestTimeoutMs = 4000
                 }
             }.use { client ->
+                server.brokenOnRequest = true
+                server.ignoreNewConnection = true
+
                 val initConnection = client.getConnection()
 
-                val idempotentRequest = client.send(IdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
-                val nonIdempotentRequest = client.send(NonIdempotentRequest("foo"), PlainBody(Unpooled.EMPTY_BUFFER))
+                val idempotentBody = PlainBody(Unpooled.directBuffer())
+                val idempotentRequest = client.send(IdempotentRequest("foo"), idempotentBody)
 
-                assertEquals(StatusCode.CONNECTION_ERROR, nonIdempotentRequest.get().status())
-
-                server.ignoreHeartbeat = false
-                ignore = false
-
-                eventually(2000) {
-                    assertTrue(client.isConnected())
+                eventually(1000) {
+                    assertFalse(client.isConnected())
                 }
 
-                assertNotEquals(initConnection, client.getConnection())
+                server.brokenOnRequest = false
+                server.ignoreNewConnection = false
+                LOG.info("Server recovered.")
+
+                eventually(5000) {
+                    assertTrue(client.isConnected())
+                    assertNotEquals(initConnection, client.getConnection())
+                }
 
                 assertEquals(StatusCode.OK, idempotentRequest.get().use {
                     it.status()
                 })
+
+                idempotentBody.data().use {
+                    assertEquals(1, it.refCnt())
+                }
+            }
+        }
+    }
+
+    /**
+     * Test client can reconnect to server and make remote calls.
+     */
+    @Test
+    fun testNonIdempotentCallDoNotRetryWhenClientReconnect() {
+        server<String> {
+            request {
+                set("foo") { _, request, echo ->
+                    echo(request.ok())
+                }
+            }
+        }.use { server ->
+            client<String>(server.endpoint) {
+                config {
+                    requestTimeoutMs = 4000
+                }
+            }.use { client ->
+                server.brokenOnRequest = true
+                server.ignoreNewConnection = true
+
+                val initConnection = client.getConnection()
+
+                val idempotentBody = PlainBody(Unpooled.directBuffer())
+                val idempotentRequest = client.send(NonIdempotentRequest("foo"), idempotentBody)
+
+                eventually(1000) {
+                    assertFalse(client.isConnected())
+                }
+
+                server.brokenOnRequest = false
+                server.ignoreNewConnection = false
+                LOG.info("Server recovered.")
+
+                eventually(5000) {
+                    assertTrue(client.isConnected())
+                    assertNotEquals(initConnection, client.getConnection())
+                }
+
+                assertEquals(StatusCode.CONNECTION_ERROR, idempotentRequest.get().use {
+                    it.status()
+                })
+
+                idempotentBody.data().use {
+                    assertEquals(1, it.refCnt())
+                }
             }
         }
     }
@@ -108,6 +162,10 @@ class RetryTest {
                 })
             }
         }
+    }
+
+    companion object {
+        private val LOG = LoggerFactory.getLogger(RetryTest::class.java)
     }
 
 }

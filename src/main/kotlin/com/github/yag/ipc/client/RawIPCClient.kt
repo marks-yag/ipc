@@ -59,12 +59,14 @@ import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TIOStreamTransport
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.SocketException
 import java.nio.ByteBuffer
 import java.util.Timer
 import java.util.TimerTask
+import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -138,6 +140,7 @@ internal class RawIPCClient<T : Any>(
         } catch (e: Exception) {
             when (e) {
                 is InterruptedException -> throw InterruptedException("Connect to ipc server timeout and interrupted.")
+                is CancellationException -> throw ConnectException("Handshake failed.")
                 is ConnectException -> throw ConnectException(e.message) //make stack clear
                 is SocketException -> throw SocketException(e.message)
                 else -> throw e
@@ -243,8 +246,6 @@ internal class RawIPCClient<T : Any>(
             } catch (e: Exception) {
                 LOG.warn("Close channel failed.")
             }
-
-            LOG.info("IPC client closed, make all pending requests timeout.")
         }
     }
 
@@ -321,7 +322,10 @@ internal class RawIPCClient<T : Any>(
 
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
-            if (!connectFuture.isCompletedExceptionally) {
+            if (!closed.get() && !connectFuture.isCompletedExceptionally) {
+                if (!promptFuture.isDone) {
+                    promptFuture.cancel(true)
+                }
                 channelInactive()
             }
         }

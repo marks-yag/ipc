@@ -84,7 +84,8 @@ class IPCClient<T : Any> internal constructor(
     @Volatile
     private var reconnectDisabled = false
 
-    private val reconnectingThread = AtomicReference<Thread>()
+    @Volatile
+    private var reconnectingTask: Future<Boolean>? = null
 
     val sessionId: String
 
@@ -93,7 +94,7 @@ class IPCClient<T : Any> internal constructor(
             client = retry.call {
                 RawIPCClient(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer) {
                     // Reconnecting should not run in I/O threads (eventloop)
-                    recoveryAsync()
+                    reconnectingTask = recoveryAsync()
                 }
             }
             sessionId = client.connection.sessionId
@@ -103,14 +104,17 @@ class IPCClient<T : Any> internal constructor(
         }
     }
 
-    private fun recoveryAsync() {
-        threadContext.execute {
+    private fun recoveryAsync() : Future<Boolean> {
+        return threadContext.execute {
             try {
                 recover()
+                true
             } catch (e: InterruptedException) {
-                LOG.debug("Recover cancelled.")
+                LOG.debug("Recover cancelled.", e)
+                false
             } catch (e: Exception) {
                 LOG.warn("Recover failed.", e)
+                false
             }
         }
     }
@@ -286,6 +290,7 @@ class IPCClient<T : Any> internal constructor(
     private fun recover() {
         if (reconnectDisabled) return
         lock.writeLock().withLock {
+            LOG.info("Recovering client.")
             client.close()
             threadContext.parallelCalls.release(pendingRequests.size)
 
@@ -298,7 +303,6 @@ class IPCClient<T : Any> internal constructor(
                 pendingRequests.remove(it.key)
             }
 
-            reconnectingThread.set(Thread.currentThread())
             client = try {
                 retry.call {
                     RawIPCClient(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
@@ -323,7 +327,7 @@ class IPCClient<T : Any> internal constructor(
                 pendingRequests.clear()
                 throw e
             } finally {
-                reconnectingThread.set(null)
+                LOG.info("Connection recovered.")
             }
         }
     }
@@ -333,7 +337,7 @@ class IPCClient<T : Any> internal constructor(
      */
     override fun close() {
         reconnectDisabled = true
-        reconnectingThread.get()?.interrupt()
+        reconnectingTask?.cancel(true)
         lock.readLock().withLock {
             client.close()
         }

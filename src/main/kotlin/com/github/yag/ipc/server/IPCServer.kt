@@ -106,6 +106,12 @@ class IPCServer internal constructor(
     internal var ignoreHeartbeat = false
         @TestOnly set
 
+    internal var ignoreNewConnection = false
+        @TestOnly set
+
+    internal var brokenOnRequest = false
+        @TestOnly set
+
 
     init {
         LOG.info("Start ipc server.")
@@ -153,6 +159,11 @@ class IPCServer internal constructor(
 
         override fun initChannel(socketChannel: SocketChannel) {
             LOG.debug("New tcp connection arrived.")
+
+            if (ignoreNewConnection) {
+                socketChannel.close()
+                return
+            }
 
             val promptData = promptGenerator()
             val connection = Connection(UUID.randomUUID().toString(), promptData)
@@ -256,6 +267,13 @@ class IPCServer internal constructor(
             val packet = msg as Packet<RequestHeader>
             val header = packet.header
             LOG.trace("Handle message, id: {}, requestId: {}.", connection.id, header.thrift.callId)
+
+            if (brokenOnRequest) {
+                LOG.debug("Broken connection.")
+                ctx.channel().close()
+                return
+            }
+
             requestHandler.handle(connection, packet) {
                 check(it.header.thrift.callId == header.thrift.callId)
 

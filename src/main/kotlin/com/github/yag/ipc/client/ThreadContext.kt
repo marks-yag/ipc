@@ -28,7 +28,9 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.util.concurrent.DefaultThreadFactory
 import org.slf4j.LoggerFactory
 import java.util.Timer
+import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
@@ -101,8 +103,8 @@ class ThreadContext(private val config: ThreadContextConfig) {
         return list
     }
 
-    internal fun execute(runnable: Runnable) {
-        reconnectExecutor.execute(runnable)
+    internal fun execute(callable: Callable<Boolean>) : Future<Boolean> {
+        return reconnectExecutor.submit(callable)
     }
 
     fun retain() : ThreadContext {
@@ -118,6 +120,7 @@ class ThreadContext(private val config: ThreadContextConfig) {
             check(refCnt > 0)
             refCnt--
             if (refCnt == 0) {
+                LOG.info("Shutdown thread context.")
                 eventLoop.shutdownGracefully()
                 flusher.close()
                 reconnectExecutor.shutdown()
