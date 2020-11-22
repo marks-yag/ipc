@@ -237,7 +237,7 @@ internal class RawIPCClient<T : Any>(
     }
 
     override fun close() {
-        if (closed.compareAndSet(false, true)) {
+        if (closed.getAndSet(true)) {
             LOG.info("IPC client closing...")
             try {
                 channel.close().sync()
