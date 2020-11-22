@@ -57,9 +57,7 @@ import io.netty.handler.timeout.IdleStateEvent
 import io.netty.handler.timeout.IdleStateHandler
 import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TIOStreamTransport
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.IOException
 import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.SocketException

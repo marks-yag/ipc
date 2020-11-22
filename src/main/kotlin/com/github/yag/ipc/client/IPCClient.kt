@@ -30,7 +30,6 @@ import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.ConnectException
@@ -40,7 +39,6 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentSkipListMap
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
 
