@@ -90,10 +90,7 @@ class IPCClient<T : Any> internal constructor(
     init {
         try {
             connection = retry.call {
-                Connection(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer) {
-                    // Reconnecting should not run in I/O threads (eventloop)
-                    reconnectingTask = recoveryAsync()
-                }
+                Connection(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer, ::recoveryAsync)
             }
             sessionId = connection.connectionAccepted.sessionId
         } catch (e: Exception) {
@@ -102,8 +99,8 @@ class IPCClient<T : Any> internal constructor(
         }
     }
 
-    private fun recoveryAsync() : Future<Boolean> {
-        return threadContext.execute {
+    private fun recoveryAsync() {
+        reconnectingTask = threadContext.execute {
             try {
                 recover()
                 true
