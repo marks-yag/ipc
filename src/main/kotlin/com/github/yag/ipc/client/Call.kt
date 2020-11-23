@@ -17,4 +17,4 @@
 
 package com.github.yag.ipc.client
 
-internal class Call<T: Any>(val client: RawIPCClient<T>, val pendingRequest: PendingRequest<T>)
+internal class Call<T: Any>(val client: Connection<T>, val pendingRequest: PendingRequest<T>)

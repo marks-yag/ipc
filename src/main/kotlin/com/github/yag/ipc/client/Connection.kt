@@ -74,7 +74,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.system.measureTimeMillis
 
-internal class RawIPCClient<T : Any>(
+internal class Connection<T : Any>(
     endpoint: InetSocketAddress,
     private val config: IPCClientConfig,
     private val threadContext: ThreadContext,
@@ -95,7 +95,7 @@ internal class RawIPCClient<T : Any>(
 
     private val promptFuture: CompletableFuture<Prompt>
 
-    internal val connection: ConnectionAccepted
+    internal val connectionAccepted: ConnectionAccepted
 
     private val connectFuture: CompletableFuture<ConnectionAccepted>
 
@@ -145,10 +145,10 @@ internal class RawIPCClient<T : Any>(
             }
         }
 
-        LOG.debug("New ipc client created.")
+        LOG.debug("New ipc connection created.")
         try {
-            connection = connectFuture.get()
-            LOG.debug("New ipc client connection accepted: {}.", connection.connectionId)
+            connectionAccepted = connectFuture.get()
+            LOG.debug("New ipc connection accepted: {}.", connectionAccepted.connectionId)
         } catch (e: ExecutionException) {
             throw e.cause ?: e
         }
@@ -238,7 +238,7 @@ internal class RawIPCClient<T : Any>(
 
     override fun close() {
         if (closed.getAndSet(true)) {
-            LOG.info("IPC client closing...")
+            LOG.info("Connection closing...")
             try {
                 channel.close().sync()
             } catch (e: Exception) {
@@ -292,7 +292,7 @@ internal class RawIPCClient<T : Any>(
             val header = packet.header
             LOG.trace(
                 "Received response, connectionId: {}, requestId: {}.",
-                connection.connectionId,
+                connectionAccepted.connectionId,
                 header.thrift.callId
             )
             doCallback(packet)
@@ -309,7 +309,7 @@ internal class RawIPCClient<T : Any>(
                     it.callback.lastContactTimestamp = System.currentTimeMillis()
                     LOG.trace(
                         "Continue, connectionId: {}, requestId: {}.",
-                        connection.connectionId,
+                        connectionAccepted.connectionId,
                         header.thrift.callId
                     )
                 }
@@ -379,7 +379,7 @@ internal class RawIPCClient<T : Any>(
 
     companion object {
 
-        private val LOG = LoggerFactory.getLogger(RawIPCClient::class.java)
+        private val LOG = LoggerFactory.getLogger(Connection::class.java)
 
         val CHANNEL_CLASS: Class<out SocketChannel> =
             when {
