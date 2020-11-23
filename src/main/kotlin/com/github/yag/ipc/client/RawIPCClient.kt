@@ -83,6 +83,7 @@ internal class RawIPCClient<T : Any>(
     private val currentCallId: AtomicLong,
     private val pendingRequests: MutableMap<Long, PendingRequest<T>>,
     metric: MetricRegistry,
+    id: String,
     private val timer: Timer,
     private val channelInactive: () -> Unit
 ) : AutoCloseable {
