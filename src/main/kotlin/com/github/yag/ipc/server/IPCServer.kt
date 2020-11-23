@@ -323,7 +323,6 @@ class IPCServer internal constructor(
                         )
                         else -> LOG.debug("Connection I/O error, connection: {}.", connection.id, cause)
                     }
-
                 }
                 else -> {
                     LOG.warn("Unknown exception.", cause)

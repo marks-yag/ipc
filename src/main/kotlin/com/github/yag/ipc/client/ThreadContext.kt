@@ -45,7 +45,7 @@ class ThreadContext(private val config: ThreadContextConfig) {
 
     val timer: Timer = Timer(true)
 
-    val eventLoop: EventLoopGroup = createEventLoopGroup(config.eventLoopThreads)
+    val eventLoop: EventLoopGroup = createEventLoopGroup(config.eventLoopThreads, config.poolName)
 
     private val queue = LinkedBlockingQueue<Call<*>>()
 
@@ -153,8 +153,8 @@ class ThreadContext(private val config: ThreadContextConfig) {
             }
         }
 
-        internal fun createEventLoopGroup(threads: Int) : EventLoopGroup {
-            val threadFactory = DefaultThreadFactory("executor", true)
+        internal fun createEventLoopGroup(threads: Int, name: String) : EventLoopGroup {
+            val threadFactory = DefaultThreadFactory(name, true)
             return when {
                 Epoll.isAvailable() -> {
                     EpollEventLoopGroup(threads, threadFactory)

@@ -32,4 +32,7 @@ class ThreadContextConfig {
 
     @Value
     var maxWriteBatchSize: Int = 8192
+
+    @Value
+    var poolName: String = "thread-context-default"
 }
