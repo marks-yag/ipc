@@ -290,7 +290,7 @@ class IPCClient<T : Any> internal constructor(
         lock.writeLock().withLock {
             LOG.info("Recovering connection.")
             connection.close()
-            threadContext.parallelCalls.release(pendingRequests.size)
+            threadContext.releaseRequest(pendingRequests.size)
 
             pendingRequests.filterNot {
                 it.value.request.type.isIdempotent()

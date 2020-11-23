@@ -179,8 +179,8 @@ internal class Connection<T : Any>(
         val header = packet.header.thrift
 
         blockTime.update(measureTimeMillis {
-            threadContext.parallelCalls.acquire()
-            threadContext.parallelRequestContentSize.acquire(header.contentLength)
+            threadContext.acquireRequest()
+            threadContext.acquireRequestContent(header.contentLength)
         })
 
         val callId = header.callId
@@ -219,14 +219,7 @@ internal class Connection<T : Any>(
 
     private fun write(packet: Packet<RequestHeader>) {
         channel.write(packet).addListener {
-            threadContext.parallelRequestContentSize.release(packet.header.thrift.contentLength)
-            if (LOG.isTraceEnabled) {
-                LOG.trace(
-                    "$loggerPrefix released {} then {}.",
-                    packet.header.thrift.contentLength,
-                    threadContext.parallelRequestContentSize.availablePermits()
-                )
-            }
+            threadContext.releaseRequestContent(packet.header.thrift.contentLength)
         }
     }
 
@@ -301,7 +294,7 @@ internal class Connection<T : Any>(
                 if (header.thrift.statusCode != StatusCode.PARTIAL_CONTENT) {
                     it.request.packet.close()
                     pendingRequests.remove(header.thrift.callId)
-                    threadContext.parallelCalls.release()
+                    threadContext.releaseRequest()
                 } else {
                     it.callback.lastContactTimestamp = System.currentTimeMillis()
                     LOG.trace("$loggerPrefix continue requestId: {}.", header.thrift.callId)

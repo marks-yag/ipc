@@ -68,9 +68,30 @@ class ThreadContext(private val config: ThreadContextConfig) {
         }
     }.apply { start() }
 
-    internal val parallelCalls = Semaphore(config.maxParallelCalls)
+    private val parallelCalls = Semaphore(config.maxParallelCalls)
 
-    internal val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
+    private val parallelRequestContentSize = Semaphore(config.maxParallelRequestContentSize)
+
+    fun acquireRequest() = parallelCalls.acquire()
+
+    fun releaseRequest() = parallelCalls.release()
+
+    fun releaseRequest(permit: Int) = parallelCalls.release(permit)
+
+    fun acquireRequestContent(permit: Int) {
+        parallelRequestContentSize.acquire(permit)
+    }
+
+    fun releaseRequestContent(permit: Int) {
+        parallelRequestContentSize.release(permit)
+        if (LOG.isTraceEnabled) {
+            LOG.trace(
+                "Released {} then {}.",
+                permit,
+                parallelRequestContentSize.availablePermits()
+            )
+        }
+    }
 
     internal fun offer(call: Call<*>) {
         check(queue.offer(call))
