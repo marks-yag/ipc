@@ -83,11 +83,10 @@ internal class Connection<T : Any>(
     private val currentCallId: AtomicLong,
     private val pendingRequests: MutableMap<Long, PendingRequest<T>>,
     metric: MetricRegistry,
-    id: String,
+    private val clientId: String,
     private val timer: Timer,
     private val channelInactive: () -> Unit
 ) : AutoCloseable {
-
 
     private val bootstrap: Bootstrap
 
@@ -107,7 +106,9 @@ internal class Connection<T : Any>(
 
     private val lock = ReentrantLock()
 
-    private val blockTime = metric.histogram("ipc-client-request-block-time")
+    private val loggerPrefix: String
+
+    private val blockTime = metric.histogram("ipc-request-block-time")
 
     init {
         bootstrap = Bootstrap().apply {
@@ -145,10 +146,10 @@ internal class Connection<T : Any>(
             }
         }
 
-        LOG.debug("New ipc connection created.")
         try {
             connectionAccepted = connectFuture.get()
-            LOG.debug("New ipc connection accepted: {}.", connectionAccepted.connectionId)
+            loggerPrefix = "Client: $clientId, connection: ${connectionAccepted.connectionId},"
+            LOG.debug("$loggerPrefix new ipc accepted.")
         } catch (e: ExecutionException) {
             throw e.cause ?: e
         }
@@ -190,7 +191,7 @@ internal class Connection<T : Any>(
 
         val timeoutMs = type.timeoutMs() ?: config.requestTimeoutMs
 
-        LOG.trace("Queued: {}, timeout: {}.", request, timeoutMs)
+        LOG.trace("$loggerPrefix queued: {}, timeout: {}.", request, timeoutMs)
 
         if (timeoutMs > 0) {
             timer.schedule(object : TimerTask() {
@@ -212,7 +213,7 @@ internal class Connection<T : Any>(
             }
             flush()
         } else {
-            LOG.trace("Ignore packets because client was closed: {}.", packets)
+            LOG.trace("$loggerPrefix ignore packets because connection was closed: {}.", packets)
         }
     }
 
@@ -221,7 +222,7 @@ internal class Connection<T : Any>(
             threadContext.parallelRequestContentSize.release(packet.header.thrift.contentLength)
             if (LOG.isTraceEnabled) {
                 LOG.trace(
-                    "Released {} then {}.",
+                    "$loggerPrefix released {} then {}.",
                     packet.header.thrift.contentLength,
                     threadContext.parallelRequestContentSize.availablePermits()
                 )
@@ -231,18 +232,18 @@ internal class Connection<T : Any>(
 
     private fun timeout(callId: Long) {
         pendingRequests.remove(callId)?.let {
-            LOG.debug("Timeout: {}.", callId)
+            LOG.debug("$loggerPrefix timeout: {}.", callId)
             it.doResponse(status(callId, StatusCode.TIMEOUT))
         }
     }
 
     override fun close() {
         if (closed.getAndSet(true)) {
-            LOG.info("Connection closing...")
+            LOG.info("$loggerPrefix closing...")
             try {
                 channel.close().sync()
             } catch (e: Exception) {
-                LOG.warn("Close channel failed.")
+                LOG.warn("$loggerPrefix close channel failed.")
             }
         }
     }
@@ -276,7 +277,7 @@ internal class Connection<T : Any>(
                 if (!packet.isHeartbeat()) {
                     out.add(packet)
                 } else {
-                    LOG.debug("Received heartbeat ack.")
+                    LOG.debug("$loggerPrefix received heartbeat ack.")
                     lastContact = System.currentTimeMillis()
                     buf.release()
                 }
@@ -290,11 +291,7 @@ internal class Connection<T : Any>(
             val packet = msg as Packet<ResponseHeader>
 
             val header = packet.header
-            LOG.trace(
-                "Received response, connectionId: {}, requestId: {}.",
-                connectionAccepted.connectionId,
-                header.thrift.callId
-            )
+            LOG.trace("$loggerPrefix received response for requestId: {}.", header.thrift.callId)
             doCallback(packet)
         }
 
@@ -307,11 +304,7 @@ internal class Connection<T : Any>(
                     threadContext.parallelCalls.release()
                 } else {
                     it.callback.lastContactTimestamp = System.currentTimeMillis()
-                    LOG.trace(
-                        "Continue, connectionId: {}, requestId: {}.",
-                        connectionAccepted.connectionId,
-                        header.thrift.callId
-                    )
+                    LOG.trace("$loggerPrefix continue requestId: {}.", header.thrift.callId)
                 }
                 it.doResponse(packet)
             }
@@ -334,11 +327,11 @@ internal class Connection<T : Any>(
                 @Suppress("WHEN_ENUM_CAN_BE_NULL_IN_JAVA")
                 when (event.state()) {
                     IdleState.READER_IDLE, IdleState.ALL_IDLE -> {
-                        LOG.debug("Channel heartbeat timeout.")
+                        LOG.debug("$loggerPrefix channel heartbeat timeout.")
                         ctx.channel().close()
                     }
                     IdleState.WRITER_IDLE -> {
-                        LOG.debug("Send heartbeat.")
+                        LOG.debug("$loggerPrefix send heartbeat.")
                         ctx.channel().writeAndFlush(
                             Packet.requestHeartbeat
                         ).addListener(ChannelFutureListener.CLOSE_ON_FAILURE)
@@ -350,7 +343,7 @@ internal class Connection<T : Any>(
         @Suppress("DEPRECATION", "OverridingDeprecatedMember")
         override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
             super.exceptionCaught(ctx, cause)
-            LOG.error("Unknown exception.", cause)
+            LOG.error("$loggerPrefix unknown exception.", cause)
         }
     }
 
