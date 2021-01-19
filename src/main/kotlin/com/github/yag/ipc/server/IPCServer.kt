@@ -103,13 +103,13 @@ class IPCServer internal constructor(
 
     private val closed = AtomicBoolean()
 
-    internal var ignoreHeartbeat = false
+    var ignoreHeartbeat = false
         @TestOnly set
 
-    internal var ignoreNewConnection = false
+    var ignoreNewConnection = false
         @TestOnly set
 
-    internal var brokenOnRequest = false
+    var brokenOnRequest = false
         @TestOnly set
 
 
