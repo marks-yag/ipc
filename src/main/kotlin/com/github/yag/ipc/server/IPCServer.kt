@@ -270,6 +270,7 @@ class IPCServer internal constructor(
 
             if (brokenOnRequest) {
                 LOG.debug("Broken connection.")
+                packet.close()
                 ctx.channel().close()
                 return
             }
