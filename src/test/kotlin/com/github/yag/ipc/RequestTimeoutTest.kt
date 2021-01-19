@@ -69,15 +69,17 @@ class RequestTimeoutTest {
             val first = client.send(Operation.FOO, ThriftBody(User("yag", "123")))
             val second = client.send(Operation.BAR, ThriftBody(User("yag", "456")))
 
-            val secondResult = second.get()
-            val secondCost = System.currentTimeMillis() - start
-            assertEquals(StatusCode.TIMEOUT, secondResult.status())
-            assertTrue(secondCost in 1000L..1200L, "Cost $secondCost")
+            second.get().use { secondResult ->
+                val secondCost = System.currentTimeMillis() - start
+                assertEquals(StatusCode.TIMEOUT, secondResult.status())
+                assertTrue(secondCost in 1000L..1200L, "Cost $secondCost")
+            }
 
-            val firstResult = first.get()
-            val firstCost = System.currentTimeMillis() - start
-            assertEquals(StatusCode.TIMEOUT, firstResult.status())
-            assertTrue(firstCost in 2000L..2200L, "Cost $firstCost")
+            first.get().use { firstResult ->
+                val firstCost = System.currentTimeMillis() - start
+                assertEquals(StatusCode.TIMEOUT, firstResult.status())
+                assertTrue(firstCost in 2000L..2200L, "Cost $firstCost")
+            }
         }
     }
 

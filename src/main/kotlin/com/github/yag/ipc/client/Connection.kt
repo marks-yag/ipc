@@ -227,6 +227,7 @@ internal class Connection<T : Any>(
         pendingRequests.remove(callId)?.let {
             LOG.debug("$loggerPrefix timeout: {}.", callId)
             it.doResponse(status(callId, StatusCode.TIMEOUT))
+            (it.request.packet.body as? AutoCloseable)?.close()
         }
     }
 
