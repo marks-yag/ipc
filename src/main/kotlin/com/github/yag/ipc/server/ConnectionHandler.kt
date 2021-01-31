@@ -24,5 +24,11 @@ interface ConnectionHandler {
     @Throws(ConnectionRejectException::class)
     fun handle(connection: Connection)
 
+    fun inactive(connection: Connection) {
+    }
+
+    fun timeout(connection: Connection) {
+    }
+
 }
 

@@ -306,6 +306,7 @@ class IPCServer internal constructor(
             when (cause) {
                 is ReadTimeoutException -> {
                     LOG.info("Connection read timeout, connection: {}.", connection.id)
+                    connectionHandler.timeout(connection)
                 }
                 is ClosedChannelException -> {
                     if (LOG.isDebugEnabled) {
@@ -334,6 +335,7 @@ class IPCServer internal constructor(
         override fun channelInactive(ctx: ChannelHandlerContext) {
             super.channelInactive(ctx)
             LOG.debug("Channel inactive: {}.", connection.id)
+            connectionHandler.inactive(connection)
         }
     }
 
