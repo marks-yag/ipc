@@ -18,11 +18,13 @@
 package com.github.yag.ipc
 
 import io.netty.buffer.ByteBuf
+import org.apache.thrift.TConfiguration
+import org.apache.thrift.transport.TEndpointTransport
 import org.apache.thrift.transport.TTransport
 import org.apache.thrift.transport.TTransportException
 
 
-internal class TByteBufTransport(private val bf: ByteBuf) : TTransport() {
+internal class TByteBufTransport(private val bf: ByteBuf, conf: TConfiguration = TConfiguration()) : TEndpointTransport(conf) {
 
     override fun close() {}
 

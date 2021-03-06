@@ -35,7 +35,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <kotlin.version>1.4.10</kotlin.version>
+        <kotlin.version>1.4.30</kotlin.version>
         <kotlin.code.style>official</kotlin.code.style>
         <junit.version>4.13.1</junit.version>
         <config.version>0.11.0</config.version>
@@ -137,7 +137,7 @@
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
-            <version>0.12.0</version>
+            <version>0.14.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>commons-logging</groupId>
@@ -309,7 +309,7 @@
                 <version>${punner.version}</version>
                 <configuration>
                     <overrideDefault>true</overrideDefault>
-                    <parallelLevel>1c</parallelLevel>
+                    <parallelLevel>1</parallelLevel>
                 </configuration>
                 <executions>
                     <execution>
