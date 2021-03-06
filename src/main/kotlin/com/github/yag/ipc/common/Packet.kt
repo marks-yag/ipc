@@ -15,23 +15,31 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
-import org.slf4j.LoggerFactory
+import com.github.yag.ipc.protocol.RequestHeader
+import com.github.yag.ipc.protocol.StatusCode
+import io.netty.buffer.Unpooled
+import org.apache.thrift.TSerializable
 
-internal class PendingRequest<T>(val request: Request<T>, val callback: CallbackInfo) {
+data class Packet<T : TSerializable>(val header: PacketHeader<T>, val body: Body) : AutoCloseable {
 
-    fun doResponse(response: Packet<ResponseHeader>) {
-        try {
-            callback.func(response)
-        } catch (e: Exception) {
-            LOG.warn("Callback failed for request: {}", request.packet.header.thrift.callId, e)
-        }
+    internal fun isHeartbeat() = header.isHeartbeat(header.thrift)
+
+    override fun close() {
+        body.data().release()
     }
 
     companion object {
-        private val LOG = LoggerFactory.getLogger(PendingRequest::class.java)
+
+        internal val requestHeartbeat = Packet(RequestPacketHeader(RequestHeader(-1, "", 0)), PlainBody(Unpooled.EMPTY_BUFFER))
+
+        internal val responseHeartbeat = status(-1, StatusCode.OK)
+
     }
+
 }
+
+
+
+

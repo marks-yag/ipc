@@ -17,12 +17,12 @@
 
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.Packet
-import com.github.yag.ipc.PlainBody
-import com.github.yag.ipc.RequestHeader
-import com.github.yag.ipc.ResponseHeader
-import com.github.yag.ipc.ResponsePacketHeader
-import com.github.yag.ipc.StatusCode
+import com.github.yag.ipc.common.Packet
+import com.github.yag.ipc.common.PlainBody
+import com.github.yag.ipc.common.ResponsePacketHeader
+import com.github.yag.ipc.protocol.RequestHeader
+import com.github.yag.ipc.protocol.ResponseHeader
+import com.github.yag.ipc.protocol.StatusCode
 import io.netty.buffer.Unpooled
 import java.util.concurrent.ConcurrentHashMap
 

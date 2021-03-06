@@ -15,13 +15,28 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
+import com.github.yag.config.Value
 
-interface Callback {
+class ChannelConfig {
 
-    fun doCallback(packet: Packet<ResponseHeader>)
+    @Value
+    var connectionTimeoutMs: Long = 20_000L
+
+    @Value
+    var tcpNoDelay: Boolean = false
+
+    @Value
+    var recvBufSize: Int = 1024 * 1024
+
+    @Value
+    var sendBufSize: Int = 1024 * 1024
+
+    @Value
+    var watermarkHigh: Int = 1024 * 1024 * 16
+
+    @Value
+    var watermarkLow: Int = 1024 * 1024 * 8
 
 }

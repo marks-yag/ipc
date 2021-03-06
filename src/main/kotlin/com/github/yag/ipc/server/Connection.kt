@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.ConnectRequest
+import com.github.yag.ipc.protocol.ConnectRequest
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentHashMap
 

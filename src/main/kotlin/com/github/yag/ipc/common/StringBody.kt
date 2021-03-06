@@ -15,13 +15,16 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 
-interface Callback {
+data class StringBody(val data: String) : Body {
 
-    fun doCallback(packet: Packet<ResponseHeader>)
+    private val buf = Unpooled.wrappedBuffer(data.toByteArray(Charsets.UTF_8))
 
+    override fun data(): ByteBuf {
+        return buf
+    }
 }

@@ -17,13 +17,13 @@
 
 package com.github.yag.ipc.client
 
-import com.github.yag.ipc.Body
-import com.github.yag.ipc.Packet
-import com.github.yag.ipc.PlainBody
-import com.github.yag.ipc.Prompt
-import com.github.yag.ipc.ResponseHeader
-import com.github.yag.ipc.StatusCode
-import com.github.yag.ipc.status
+import com.github.yag.ipc.common.Body
+import com.github.yag.ipc.common.Packet
+import com.github.yag.ipc.common.PlainBody
+import com.github.yag.ipc.protocol.Prompt
+import com.github.yag.ipc.protocol.ResponseHeader
+import com.github.yag.ipc.protocol.StatusCode
+import com.github.yag.ipc.common.status
 import com.github.yag.retry.Checker
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.Retry

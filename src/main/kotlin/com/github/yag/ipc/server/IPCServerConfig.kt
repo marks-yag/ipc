@@ -18,7 +18,7 @@
 package com.github.yag.ipc.server
 
 import com.github.yag.config.Value
-import com.github.yag.ipc.ChannelConfig
+import com.github.yag.ipc.common.ChannelConfig
 
 class IPCServerConfig {
 

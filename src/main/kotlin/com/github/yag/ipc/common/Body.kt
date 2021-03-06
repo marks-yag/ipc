@@ -15,13 +15,22 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
+import io.netty.buffer.ByteBuf
+import java.nio.ByteBuffer
 
-interface Callback {
+interface Body {
 
-    fun doCallback(packet: Packet<ResponseHeader>)
+    fun data() : ByteBuf
+
+    fun nioBufferData() : ByteBuffer = data().nioBuffer()
+
+    fun arrayData() : ByteArray {
+        val buf = data()
+        return ByteArray(buf.readableBytes()).apply {
+            buf.readBytes(this)
+        }
+    }
 
 }

@@ -15,13 +15,27 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufAllocator
+import io.netty.buffer.PooledByteBufAllocator
+import org.apache.thrift.TSerializable
 
-interface Callback {
+class ThriftBody @JvmOverloads constructor(private val obj: TSerializable, allocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT) : Body, AutoCloseable {
 
-    fun doCallback(packet: Packet<ResponseHeader>)
+    private val buf = TEncoder.encode(obj, allocator.buffer())
+
+    override fun data(): ByteBuf {
+        return buf
+    }
+
+    override fun close() {
+        buf.release()
+    }
+
+    override fun toString(): String {
+        return obj.toString()
+    }
 
 }

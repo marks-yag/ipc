@@ -15,13 +15,26 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
+import java.nio.ByteBuffer
 
-interface Callback {
 
-    fun doCallback(packet: Packet<ResponseHeader>)
+data class PlainBody(private val body: ByteBuf) : Body {
+
+    constructor(array: ByteArray) : this(Unpooled.wrappedBuffer(array))
+
+    constructor(buf: ByteBuffer) : this(Unpooled.wrappedBuffer(buf))
+
+    override fun data(): ByteBuf {
+        return body
+    }
+
+    companion object {
+        @JvmStatic
+        val EMPTY = PlainBody(Unpooled.EMPTY_BUFFER)
+    }
 
 }

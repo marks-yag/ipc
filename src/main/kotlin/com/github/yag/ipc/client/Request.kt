@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.client
 
-import com.github.yag.ipc.Packet
-import com.github.yag.ipc.RequestHeader
+import com.github.yag.ipc.common.Packet
+import com.github.yag.ipc.protocol.RequestHeader
 
 internal data class Request<T>(val type: RequestType<T>, val packet: Packet<RequestHeader>, val timestamp: Long)

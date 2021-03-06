@@ -15,23 +15,28 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
-import org.slf4j.LoggerFactory
+import com.github.yag.ipc.protocol.ConnectRequest
+import io.netty.buffer.Unpooled
+import java.nio.ByteBuffer
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
-internal class PendingRequest<T>(val request: Request<T>, val callback: CallbackInfo) {
+class SerDesTest {
 
-    fun doResponse(response: Packet<ResponseHeader>) {
-        try {
-            callback.func(response)
-        } catch (e: Exception) {
-            LOG.warn("Callback failed for request: {}", request.packet.header.thrift.callId, e)
+    @Test
+    fun test() {
+        val request = ConnectRequest().apply {
+            setVersion("v1")
+            setBody(ByteBuffer.wrap("foo".toByteArray()))
+            setRequestTimeoutMs(1000)
         }
+
+        val encoded = TEncoder.encode(request, Unpooled.buffer())
+        val got = TDecoder.decode(ConnectRequest(), encoded)
+        assertEquals(request, got)
+        encoded.release()
     }
 
-    companion object {
-        private val LOG = LoggerFactory.getLogger(PendingRequest::class.java)
-    }
 }

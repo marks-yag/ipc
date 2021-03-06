@@ -15,13 +15,19 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
+import io.netty.buffer.ByteBuf
+import org.apache.thrift.TSerializable
 
-interface Callback {
+open class PacketHeader<T : TSerializable>(val thrift: T, val length: (T) -> Int, val isHeartbeat: (T) -> Boolean) {
 
-    fun doCallback(packet: Packet<ResponseHeader>)
+    fun packet(body: ByteBuf): Packet<T> {
+        return Packet(this, PlainBody(body))
+    }
+
+    override fun toString(): String {
+        return thrift.toString()
+    }
 
 }

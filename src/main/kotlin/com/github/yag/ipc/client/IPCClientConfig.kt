@@ -18,7 +18,7 @@
 package com.github.yag.ipc.client
 
 import com.github.yag.config.Value
-import com.github.yag.ipc.ChannelConfig
+import com.github.yag.ipc.common.ChannelConfig
 import com.github.yag.retry.CountDownRetryPolicy
 import com.github.yag.retry.ExponentialBackOffPolicy
 import java.util.TreeMap

@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.client
 
-import com.github.yag.ipc.Packet
-import com.github.yag.ipc.ResponseHeader
+import com.github.yag.ipc.common.Packet
+import com.github.yag.ipc.protocol.ResponseHeader
 
 internal data class CallbackInfo(var lastContactTimestamp: Long, val func: (Packet<ResponseHeader>) -> Any?)

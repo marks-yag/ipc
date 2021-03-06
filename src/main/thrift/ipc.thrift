@@ -1,4 +1,4 @@
-namespace java com.github.yag.ipc
+namespace java com.github.yag.ipc.protocol
 
 struct Prompt {
 1: required string version

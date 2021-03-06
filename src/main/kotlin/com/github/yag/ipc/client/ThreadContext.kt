@@ -17,8 +17,8 @@
 
 package com.github.yag.ipc.client
 
-import com.github.yag.ipc.Daemon
-import com.github.yag.ipc.daemon
+import com.github.yag.ipc.common.Daemon
+import com.github.yag.ipc.common.daemon
 import io.netty.channel.EventLoopGroup
 import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollEventLoopGroup

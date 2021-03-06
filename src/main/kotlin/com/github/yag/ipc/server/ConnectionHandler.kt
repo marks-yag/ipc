@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.ConnectionRejectException
+import com.github.yag.ipc.common.ConnectionRejectException
 
 interface ConnectionHandler {
 

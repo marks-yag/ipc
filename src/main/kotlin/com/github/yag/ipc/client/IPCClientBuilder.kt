@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.client
 
-import com.github.yag.ipc.Prompt
+import com.github.yag.ipc.protocol.Prompt
 import java.net.InetSocketAddress
 import java.util.UUID
 

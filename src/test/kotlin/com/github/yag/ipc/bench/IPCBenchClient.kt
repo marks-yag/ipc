@@ -19,12 +19,12 @@ package com.github.yag.ipc.bench
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.ipc.CallType
-import com.github.yag.ipc.PlainBody
-import com.github.yag.ipc.Utils
+import com.github.yag.ipc.common.CallType
+import com.github.yag.ipc.common.PlainBody
+import com.github.yag.ipc.common.Utils
 import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.client
-import com.github.yag.ipc.isSuccessful
+import com.github.yag.ipc.common.isSuccessful
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.CountDownLatch

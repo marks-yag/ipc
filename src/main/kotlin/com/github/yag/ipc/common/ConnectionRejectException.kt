@@ -15,13 +15,6 @@
  * under the License.
  */
 
-package com.github.yag.ipc.client
+package com.github.yag.ipc.common
 
-import com.github.yag.ipc.common.Packet
-import com.github.yag.ipc.protocol.ResponseHeader
-
-interface Callback {
-
-    fun doCallback(packet: Packet<ResponseHeader>)
-
-}
+internal class ConnectionRejectException(message: String) : Exception(message)

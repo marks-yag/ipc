@@ -19,12 +19,12 @@ package com.github.yag.ipc.smoke
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.ipc.CallType
-import com.github.yag.ipc.PlainBody
-import com.github.yag.ipc.Utils
+import com.github.yag.ipc.common.CallType
+import com.github.yag.ipc.common.PlainBody
+import com.github.yag.ipc.common.Utils
 import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.client
-import com.github.yag.ipc.isSuccessful
+import com.github.yag.ipc.common.isSuccessful
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.ExponentialBackOffPolicy
 import com.github.yag.retry.Retry

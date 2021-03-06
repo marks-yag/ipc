@@ -19,9 +19,9 @@ package com.github.yag.ipc.smoke
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.ipc.CallType
-import com.github.yag.ipc.Utils
-import com.github.yag.ipc.ok
+import com.github.yag.ipc.common.CallType
+import com.github.yag.ipc.common.Utils
+import com.github.yag.ipc.common.ok
 import com.github.yag.ipc.server.server
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random

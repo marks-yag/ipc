@@ -17,20 +17,20 @@
 
 package com.github.yag.ipc.server
 
-import com.github.yag.ipc.ConnectRequest
-import com.github.yag.ipc.ConnectionAccepted
-import com.github.yag.ipc.ConnectionRejectException
-import com.github.yag.ipc.ConnectionRejected
-import com.github.yag.ipc.ConnectionResponse
-import com.github.yag.ipc.Packet
-import com.github.yag.ipc.PacketCodec
-import com.github.yag.ipc.PacketEncoder
-import com.github.yag.ipc.Prompt
-import com.github.yag.ipc.RequestHeader
-import com.github.yag.ipc.RequestPacketHeader
-import com.github.yag.ipc.TDecoder
-import com.github.yag.ipc.TEncoder
-import com.github.yag.ipc.applyChannelConfig
+import com.github.yag.ipc.common.ConnectionRejectException
+import com.github.yag.ipc.common.Packet
+import com.github.yag.ipc.common.PacketCodec
+import com.github.yag.ipc.common.PacketEncoder
+import com.github.yag.ipc.common.RequestPacketHeader
+import com.github.yag.ipc.common.TDecoder
+import com.github.yag.ipc.common.TEncoder
+import com.github.yag.ipc.common.applyChannelConfig
+import com.github.yag.ipc.protocol.ConnectRequest
+import com.github.yag.ipc.protocol.ConnectionAccepted
+import com.github.yag.ipc.protocol.ConnectionRejected
+import com.github.yag.ipc.protocol.ConnectionResponse
+import com.github.yag.ipc.protocol.Prompt
+import com.github.yag.ipc.protocol.RequestHeader
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
