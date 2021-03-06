@@ -146,6 +146,18 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>httpclient</artifactId>
+                    <groupId>org.apache.httpcomponents</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>httpcore</artifactId>
+                    <groupId>org.apache.httpcomponents</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>tomcat-embed-core</artifactId>
+                    <groupId>org.apache.tomcat.embed</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -273,12 +285,23 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <artifactSet>
+                                <includes>
+                                    <include>io.netty:netty-all</include>
+                                    <include>org.apache.thrift:libthrift</include>
+                                </includes>
+                            </artifactSet>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>shade-netty</shadedClassifierName>
+                            <shadedClassifierName>shade</shadedClassifierName>
                             <relocations>
                                 <relocation>
                                     <pattern>io.netty</pattern>
                                     <shadedPattern>ipc.shade.io.netty</shadedPattern>
+                                </relocation>
+
+                                <relocation>
+                                    <pattern>org.apache.thrift</pattern>
+                                    <shadedPattern>ipc.shade.org.apache.thrift</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
