@@ -52,9 +52,7 @@ object IPCBenchClient {
         val latch = CountDownLatch(config.clients * config.requests)
         repeat(config.clients) {
             thread {
-                client<CallType>(endpoint, config.ipc) {
-                    metric(metric)
-                }.use { client ->
+                client<CallType>(endpoint, config.ipc).use { client ->
                     repeat(config.requests) {
                         val startMs = System.currentTimeMillis()
                         client.send(NonIdempotentRequest(CallType.values().random()), PlainBody(buf.slice())) {

@@ -17,7 +17,6 @@
 
 package com.github.yag.ipc.client
 
-import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.Prompt
 import java.net.InetSocketAddress
 import java.util.UUID
@@ -30,8 +29,6 @@ class IPCClientBuilder<T: Any>
     private var promptHandler: (Prompt) -> ByteArray = {
         ByteArray(0)
     }
-
-    private var metric: MetricRegistry = MetricRegistry()
 
     private var id: String = UUID.randomUUID().toString()
 
@@ -55,16 +52,12 @@ class IPCClientBuilder<T: Any>
         prompt(handler::handle)
     }
 
-    fun metric(metric: MetricRegistry) = apply {
-        this.metric = metric
-    }
-
     fun id(id: String) = apply {
         this.id = id
     }
 
     fun build() : IPCClient<T> {
-        return IPCClient(endpoint, config, threadContext ?: ThreadContext.getDefault(), promptHandler, metric, id)
+        return IPCClient(endpoint, config, threadContext ?: ThreadContext.getDefault(), promptHandler, id)
     }
 
 }

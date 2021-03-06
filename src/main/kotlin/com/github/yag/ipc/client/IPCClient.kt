@@ -17,7 +17,6 @@
 
 package com.github.yag.ipc.client
 
-import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.Body
 import com.github.yag.ipc.Packet
 import com.github.yag.ipc.PlainBody
@@ -55,7 +54,6 @@ class IPCClient<T : Any> internal constructor(
     private val config: IPCClientConfig,
     private val threadContext: ThreadContext,
     private val promptHandler: (Prompt) -> ByteArray,
-    private val metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
 
@@ -90,7 +88,7 @@ class IPCClient<T : Any> internal constructor(
     init {
         try {
             connection = retry.call {
-                Connection(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, metric, id, timer, ::recoveryAsync)
+                Connection(endpoint, config, threadContext, promptHandler, null, currentCallId, pendingRequests, id, timer, ::recoveryAsync)
             }
             sessionId = connection.connectionAccepted.sessionId
         } catch (e: Exception) {
@@ -300,7 +298,7 @@ class IPCClient<T : Any> internal constructor(
 
             connection = try {
                 retry.call {
-                    Connection(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, metric, id, timer) {
+                    Connection(endpoint, config, threadContext, promptHandler, sessionId, currentCallId, pendingRequests, id, timer) {
                         recoveryAsync()
                     }
                 }.also {

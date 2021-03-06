@@ -73,7 +73,6 @@ object IPCSmokeClient {
                 try {
                     retry.call {
                         client<CallType>(endpoint, config.ipc) {
-                            metric(metric)
                             id("ipc-client")
                         }
                     }.use { client ->

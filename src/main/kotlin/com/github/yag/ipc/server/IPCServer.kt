@@ -17,7 +17,6 @@
 
 package com.github.yag.ipc.server
 
-import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
 import com.github.yag.ipc.ConnectionRejectException
@@ -75,7 +74,6 @@ class IPCServer internal constructor(
     private val requestHandler: RequestHandler,
     private val connectionHandler: ConnectionHandler = ChainConnectionHandler(),
     private val promptGenerator: () -> ByteArray,
-    metric: MetricRegistry,
     private val id: String
 ) : AutoCloseable {
 
@@ -92,14 +90,6 @@ class IPCServer internal constructor(
     val endpoint: InetSocketAddress
 
     private val random = SecureRandom()
-
-    private val messageReceived = metric.counter("ipc-server-message-received-$id")
-
-    private val channelFlushed = metric.counter("ipc-server-flush-counter-$id")
-
-    private val bytesRead = metric.meter("ipc-server-bytes-read-$id")
-
-    private val byteWrite = metric.meter("ipc-server-bytes-write-$id")
 
     private val closed = AtomicBoolean()
 

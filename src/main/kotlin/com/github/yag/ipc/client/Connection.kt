@@ -17,7 +17,6 @@
 
 package com.github.yag.ipc.client
 
-import com.codahale.metrics.MetricRegistry
 import com.github.yag.ipc.Body
 import com.github.yag.ipc.ConnectRequest
 import com.github.yag.ipc.ConnectionAccepted
@@ -72,7 +71,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import kotlin.system.measureTimeMillis
 
 internal class Connection<T : Any>(
     endpoint: InetSocketAddress,
@@ -82,7 +80,6 @@ internal class Connection<T : Any>(
     private val sessionId: String?,
     private val currentCallId: AtomicLong,
     private val pendingRequests: MutableMap<Long, PendingRequest<T>>,
-    metric: MetricRegistry,
     private val clientId: String,
     private val timer: Timer,
     private val channelInactive: () -> Unit
@@ -107,8 +104,6 @@ internal class Connection<T : Any>(
     private val lock = ReentrantLock()
 
     private val loggerPrefix: String
-
-    private val blockTime = metric.histogram("ipc-request-block-time")
 
     init {
         bootstrap = Bootstrap().apply {
@@ -178,10 +173,8 @@ internal class Connection<T : Any>(
         val request = Request(type, packet, timestamp)
         val header = packet.header.thrift
 
-        blockTime.update(measureTimeMillis {
-            threadContext.acquireRequest()
-            threadContext.acquireRequestContent(header.contentLength)
-        })
+        threadContext.acquireRequest()
+        threadContext.acquireRequestContent(header.contentLength)
 
         val callId = header.callId
         val pendingRequest = PendingRequest(request, CallbackInfo(timestamp, callback))
