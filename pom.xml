@@ -40,7 +40,6 @@
         <junit.version>4.13.1</junit.version>
         <config.version>0.11.0</config.version>
         <retry.version>0.6.2</retry.version>
-        <punner.version>0.9.16</punner.version>
 
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -180,13 +179,6 @@
 
         <dependency>
             <groupId>com.github.marks-yag</groupId>
-            <artifactId>punner-core</artifactId>
-            <version>${punner.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.marks-yag</groupId>
             <artifactId>config-core</artifactId>
             <version>${config.version}</version>
             <scope>test</scope>
@@ -293,41 +285,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.20</version>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>com.github.marks-yag</groupId>
-                <artifactId>punner-maven-plugin</artifactId>
-                <version>${punner.version}</version>
-                <configuration>
-                    <overrideDefault>true</overrideDefault>
-                    <parallelLevel>1</parallelLevel>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>test</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-project-info-reports-plugin</artifactId>
-                <version>2.9</version>
-            </plugin>
-
         </plugins>
     </build>
 

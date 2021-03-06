@@ -22,9 +22,10 @@ import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
-import com.github.yag.punner.core.eventually
+import com.github.yag.retry.Retry
 import io.netty.buffer.Unpooled
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,7 +66,7 @@ class RetryTest {
                 val idempotentBody = PlainBody(Unpooled.directBuffer())
                 val idempotentRequest = client.send(IdempotentRequest("foo"), idempotentBody)
 
-                eventually(1000) {
+                Retry.duration(Duration.ofSeconds(1), Duration.ofMillis(100)).call {
                     assertFalse(client.isConnected())
                 }
 
@@ -73,7 +74,7 @@ class RetryTest {
                 server.ignoreNewConnection = false
                 LOG.info("Server recovered.")
 
-                eventually(5000) {
+                Retry.duration(Duration.ofSeconds(5), Duration.ofSeconds(1)).call {
                     assertTrue(client.isConnected())
                     assertNotEquals(initConnection, client.getConnection())
                 }
@@ -114,7 +115,7 @@ class RetryTest {
                 val idempotentBody = PlainBody(Unpooled.directBuffer())
                 val idempotentRequest = client.send(NonIdempotentRequest("foo"), idempotentBody)
 
-                eventually(1000) {
+                Retry.duration(Duration.ofSeconds(1), Duration.ofMillis(100)).call {
                     assertFalse(client.isConnected())
                 }
 
@@ -122,7 +123,7 @@ class RetryTest {
                 server.ignoreNewConnection = false
                 LOG.info("Server recovered.")
 
-                eventually(5000) {
+                Retry.duration(Duration.ofSeconds(5), Duration.ofSeconds(1)).call {
                     assertTrue(client.isConnected())
                     assertNotEquals(initConnection, client.getConnection())
                 }

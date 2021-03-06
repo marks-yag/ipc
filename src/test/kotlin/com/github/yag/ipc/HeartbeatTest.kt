@@ -22,8 +22,9 @@ import com.github.yag.ipc.client.NonIdempotentRequest
 import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.server
-import com.github.yag.punner.core.eventually
+import com.github.yag.retry.Retry
 import io.netty.buffer.Unpooled
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -58,7 +59,7 @@ class HeartbeatTest {
                 }
             }.use { client ->
                 val initConnection = client.getConnection()
-                eventually(3000) {
+                Retry.duration(Duration.ofMillis(3000), Duration.ofSeconds(1)).call {
                     assertNotEquals(initConnection, client.getConnection())
                 }
             }
@@ -108,7 +109,7 @@ class HeartbeatTest {
                 }
             }.use { client ->
                 val initConnection = client.getConnection()
-                eventually(3000) {
+                Retry.duration(Duration.ofMillis(3000), Duration.ofSeconds(1)).call {
                     assertNotEquals(initConnection, client.getConnection())
                 }
             }
@@ -141,7 +142,7 @@ class HeartbeatTest {
                     client.send(IdempotentRequest("foo"), PlainBody(data))
                 }
 
-                eventually(5000) {
+                Retry.duration(Duration.ofMillis(5000), Duration.ofSeconds(1)).call {
                     assertNotEquals(initConnection, client.getConnection())
                 }
 

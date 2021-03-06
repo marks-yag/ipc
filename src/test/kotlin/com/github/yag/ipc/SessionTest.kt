@@ -23,8 +23,9 @@ import com.github.yag.ipc.client.client
 import com.github.yag.ipc.server.Connection
 import com.github.yag.ipc.server.RequestHandler
 import com.github.yag.ipc.server.server
-import com.github.yag.punner.core.eventually
+import com.github.yag.retry.Retry
 import io.netty.buffer.Unpooled
+import java.time.Duration
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -92,12 +93,12 @@ class SessionTest {
             }.use { client ->
                 val initConnection = client.getConnection()
                 server.ignoreHeartbeat = true
-                eventually(2000) {
+                Retry.duration(Duration.ofSeconds(2), Duration.ofMillis(100)).call {
                     assertNotEquals(initConnection, client.getConnection())
                 }
 
                 server.ignoreHeartbeat = false
-                eventually(2000) {
+                Retry.duration(Duration.ofSeconds(2), Duration.ofMillis(100)).call {
                     assertTrue(client.isConnected())
                 }
                 assertNotEquals(initConnection, client.getConnection())
