@@ -260,6 +260,24 @@
                 <executions>
                     <execution>
                         <phase>generate-resources</phase>
+                        <id>remove-annotation</id>
+                        <configuration>
+                            <tasks>
+                                <replace token="@javax.annotation.Generated"
+                                         value="//Disable this for JDK9+ @javax.annotation.Generated"
+                                         dir="target/generated-sources">
+                                    <include name="**/*.java"/>
+                                </replace>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+
+                    <execution>
+                        <phase>generate-test-resources</phase>
+                        <id>remove-test-annotation</id>
                         <configuration>
                             <tasks>
                                 <replace token="@javax.annotation.Generated"
