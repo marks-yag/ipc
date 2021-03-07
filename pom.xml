@@ -282,11 +282,10 @@
                 <version>1.6.3</version>
                 <configuration>
                     <targetClasses>
-                        <param>com.github.yag.ipc.c*</param>
+                        <param>com.github.yag.ipc.common.*</param>
+                        <param>com.github.yag.ipc.client.*</param>
+                        <param>com.github.yag.ipc.server.*</param>
                     </targetClasses>
-                    <targetTests>
-                        <param>com.your.package.root*</param>
-                    </targetTests>
                 </configuration>
             </plugin>
 
