@@ -318,6 +318,11 @@
                         <param>com.github.yag.ipc.client.*</param>
                         <param>com.github.yag.ipc.server.*</param>
                     </targetClasses>
+                    <avoidCallsTo>
+                        <avoidCallsTo>kotlin.jvm.internal</avoidCallsTo>
+                        <avoidCallsTo>kotlinx.coroutines</avoidCallsTo>
+                        <avoidCallsTo>org.slf4j</avoidCallsTo>
+                    </avoidCallsTo>
                 </configuration>
             </plugin>
 
