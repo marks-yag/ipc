@@ -23,10 +23,10 @@ import com.github.yag.ipc.client.ThreadContext
 import com.github.yag.ipc.client.client
 import com.github.yag.ipc.protocol.StatusCode
 import com.github.yag.ipc.server.server
-import com.google.common.util.concurrent.SettableFuture
 import io.netty.buffer.Unpooled
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
+import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
 import kotlin.test.AfterTest
@@ -146,10 +146,10 @@ class ConnectTest {
             it.close()
         }
 
-        val client = SettableFuture.create<IPCClient<String>>()
+        val client = CompletableFuture<IPCClient<String>>()
 
         val thread = thread {
-            client.set(client(server.endpoint))
+            client.complete(client(server.endpoint))
         }
 
         Thread.sleep(5000)

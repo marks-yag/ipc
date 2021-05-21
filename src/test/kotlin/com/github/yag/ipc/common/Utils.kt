@@ -18,6 +18,8 @@
 package com.github.yag.ipc.common
 
 import com.github.yag.config.ConfigLoader
+import com.github.yag.config.Configuration
+import com.github.yag.config.Format
 import com.github.yag.config.config
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
@@ -41,17 +43,14 @@ object Utils {
             return null
         }
 
-        return ConfigLoader.load(
+        return Configuration(ConfigLoader.load(
+            Format.INI,
             if (cmd.hasOption("config")) {
                 cmd.getOptionValue("config")
             } else {
                 configFile
             }
-        ).also {
-            if (cmd.hasOption("D")) {
-                ConfigLoader.override(it, cmd.getOptionProperties("D"))
-            }
-        }.config(clazz)
+        )).get(clazz)
     }
 
     fun createByteBuf(size: Int): ByteBuf {

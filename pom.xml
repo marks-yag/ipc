@@ -21,7 +21,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.github.marks-yag</groupId>
+    <groupId>com.github.mrks-yag</groupId>
     <artifactId>ipc</artifactId>
     <url>https://github.com/marks-yag/ipc</url>
     <version>0.18.4</version>
@@ -38,7 +38,7 @@
         <kotlin.version>1.4.30</kotlin.version>
         <kotlin.code.style>official</kotlin.code.style>
         <junit.version>5.7.1</junit.version>
-        <config.version>0.11.0</config.version>
+        <config.version>0.11.2</config.version>
         <retry.version>0.6.2</retry.version>
 
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -263,6 +263,12 @@
             </plugin>
 
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>3.7.1</version>
+            </plugin>
+
+            <plugin>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
                     <execution>
@@ -362,6 +368,25 @@
             </plugin>
         </plugins>
     </build>
+
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>3.0.0</version>
+                <reportSets>
+                    <reportSet>
+                        <reports>
+                            <report>index</report>
+                            <report>licenses</report>
+                            <report>dependency-info</report>
+                        </reports>
+                    </reportSet>
+                </reportSets>
+            </plugin>
+        </plugins>
+    </reporting>
 
     <profiles>
         <profile>
