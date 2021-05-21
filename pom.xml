@@ -24,7 +24,7 @@
     <groupId>com.github.marks-yag</groupId>
     <artifactId>ipc</artifactId>
     <url>https://github.com/marks-yag/ipc</url>
-    <version>0.18.3</version>
+    <version>0.18.4</version>
     <packaging>jar</packaging>
 
     <name>IPC</name>
