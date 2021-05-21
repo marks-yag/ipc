@@ -194,10 +194,13 @@ class IPCServer internal constructor(
 
                 connection.remoteAddress = ctx.channel().remoteAddress() as InetSocketAddress
                 connection.localAddress = ctx.channel().localAddress() as InetSocketAddress
-                connection.connectRequest = TDecoder.decode(ConnectRequest(), buf)
-
-                connection.sessionId = if (connection.connectRequest.isSetSessionId) {
-                    connection.connectRequest.sessionId
+                val connectRequest = TDecoder.decode(ConnectRequest(), buf)
+                connection.version = connectRequest.getVersion()
+                connection.headers = if (connectRequest.isSetHeaders) connectRequest.getHeaders() else emptyMap()
+                connection.requestBody = connectRequest.getBody()
+                connection.requestTimeoutMs = if (connectRequest.isSetRequestTimeoutMs) connectRequest.getRequestTimeoutMs() else 0
+                connection.sessionId = if (connectRequest.isSetSessionId) {
+                    connectRequest.sessionId
                 } else {
                     val id = ByteArray(config.sessionIdLength)
                     random.nextBytes(id)

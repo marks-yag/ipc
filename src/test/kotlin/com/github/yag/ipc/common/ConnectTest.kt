@@ -54,7 +54,7 @@ class ConnectTest {
                     }
                 }
                 add {
-                    if (!it.connectRequest.isSetHeaders || !it.connectRequest.headers.containsKey("token")) {
+                    if (!it.headers.containsKey("token")) {
                         throw ConnectionRejectException("A valid token was required.")
                     }
                 }
@@ -94,8 +94,7 @@ class ConnectTest {
             connection {
                 add {
                     assertEquals("hello", it.promptData.toString(Charsets.UTF_8))
-                    val body = ByteArray(5)
-                    it.connectRequest.body.get(body)
+                    val body = it.requestBody
                     assertEquals("world", body.toString(Charsets.UTF_8))
                 }
             }

@@ -29,11 +29,23 @@ class Connection(val id: String, var promptData: ByteArray) {
     lateinit var remoteAddress: InetSocketAddress
         internal set
 
-    lateinit var connectRequest: ConnectRequest
+    lateinit var version: String
+        internal set
 
     lateinit var sessionId: String
+        internal set
+
+    lateinit var headers: Map<String, String>
+        internal set
+
+    lateinit var requestBody: ByteArray
+        internal set
 
     var lastContactTimestamp: Long = 0
+        internal set
+
+    var requestTimeoutMs: Long = 0
+        internal set
 
     private val data by lazy {
         ConcurrentHashMap<String, Any>()
