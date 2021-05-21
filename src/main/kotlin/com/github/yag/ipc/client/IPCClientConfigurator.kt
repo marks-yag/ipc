@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.client
 
-interface IPCClientConfigurator {
+fun interface IPCClientConfigurator {
 
     fun configure(config: IPCClientConfig)
 

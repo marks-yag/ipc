@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.server
 
-interface ChainConnectionHandlerConfigurator {
+fun interface ChainConnectionHandlerConfigurator {
 
     fun configure(handler: ChainConnectionHandler)
 

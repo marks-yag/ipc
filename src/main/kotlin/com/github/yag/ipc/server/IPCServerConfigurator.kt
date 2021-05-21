@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.server
 
-interface IPCServerConfigurator {
+fun interface IPCServerConfigurator {
 
     fun configure(config: IPCServerConfig)
 

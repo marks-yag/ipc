@@ -21,7 +21,7 @@ import com.github.yag.ipc.common.Packet
 import com.github.yag.ipc.protocol.RequestHeader
 import com.github.yag.ipc.protocol.ResponseHeader
 
-interface RequestHandler {
+fun interface RequestHandler {
 
     fun handle(connection: Connection, request: Packet<RequestHeader>, echo: (Packet<ResponseHeader>) -> Unit)
 

@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.server
 
-interface PromptGenerator {
+fun interface PromptGenerator {
 
     fun generate() : ByteArray
 

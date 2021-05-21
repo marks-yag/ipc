@@ -19,7 +19,7 @@ package com.github.yag.ipc.client
 
 import com.github.yag.ipc.protocol.Prompt
 
-interface PromptHandler {
+fun interface PromptHandler {
 
     fun handle(prompt: Prompt) : ByteArray
 

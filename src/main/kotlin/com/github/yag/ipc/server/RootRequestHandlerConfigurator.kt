@@ -17,7 +17,7 @@
 
 package com.github.yag.ipc.server
 
-interface RootRequestHandlerConfigurator<T: Any> {
+fun interface RootRequestHandlerConfigurator<T: Any> {
 
     fun configure(handler: RootRequestHandler<T>)
 
