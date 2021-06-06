@@ -22,12 +22,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.github.mrks-yag</groupId>
-    <artifactId>ipc</artifactId>
-    <url>https://github.com/marks-yag/ipc</url>
+    <artifactId>ketty</artifactId>
+    <url>https://github.com/marks-yag/ketty</url>
     <version>0.18.4</version>
     <packaging>jar</packaging>
 
-    <name>IPC</name>
+    <name>Ketty</name>
 
     <description>
         A simple async IPC library written in Kotlin.
