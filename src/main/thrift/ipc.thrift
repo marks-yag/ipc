@@ -1,4 +1,4 @@
-namespace java com.github.yag.ipc.protocol
+namespace java ketty.protocol
 
 struct Prompt {
 1: required string version

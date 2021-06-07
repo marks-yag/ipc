@@ -15,10 +15,10 @@
  * under the License.
  */
 
-package com.github.yag.ipc.smoke
+package ketty.smoke
 
 import com.github.yag.config.Value
-import com.github.yag.ipc.client.IPCClientConfig
+import ketty.client.IPCClientConfig
 
 class IPCSmokeClientConfig {
 

@@ -15,7 +15,7 @@
  * under the License.
  */
 
-package com.github.yag.ipc.common
+package ketty.common
 
 enum class CallType {
     Foo,

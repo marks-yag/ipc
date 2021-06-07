@@ -15,16 +15,16 @@
  * under the License.
  */
 
-package com.github.yag.ipc.bench
+package ketty.bench
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.ipc.common.CallType
-import com.github.yag.ipc.common.PlainBody
-import com.github.yag.ipc.common.Utils
-import com.github.yag.ipc.client.NonIdempotentRequest
-import com.github.yag.ipc.client.client
-import com.github.yag.ipc.common.isSuccessful
+import ketty.common.CallType
+import ketty.common.PlainBody
+import ketty.common.Utils
+import ketty.client.NonIdempotentRequest
+import ketty.client.client
+import ketty.common.isSuccessful
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.CountDownLatch

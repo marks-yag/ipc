@@ -15,9 +15,9 @@
  * under the License.
  */
 
-package com.github.yag.ipc.common
+package ketty.common
 
-import com.github.yag.ipc.protocol.ConnectRequest
+import ketty.protocol.ConnectRequest
 import io.netty.buffer.Unpooled
 import java.nio.ByteBuffer
 import kotlin.test.Test

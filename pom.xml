@@ -21,7 +21,7 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.github.mrks-yag</groupId>
+    <groupId>com.github.marks-yag</groupId>
     <artifactId>ketty</artifactId>
     <url>https://github.com/marks-yag/ketty</url>
     <version>0.18.4</version>
@@ -320,9 +320,9 @@
                 </dependencies>
                 <configuration>
                     <targetClasses>
-                        <param>com.github.yag.ipc.common.*</param>
-                        <param>com.github.yag.ipc.client.*</param>
-                        <param>com.github.yag.ipc.server.*</param>
+                        <param>ketty.common.*</param>
+                        <param>ketty.client.*</param>
+                        <param>ketty.server.*</param>
                     </targetClasses>
                     <avoidCallsTo>
                         <avoidCallsTo>kotlin.jvm.internal</avoidCallsTo>

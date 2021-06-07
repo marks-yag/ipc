@@ -15,15 +15,15 @@
  * under the License.
  */
 
-package com.github.yag.ipc.common
+package ketty.common
 
-import com.github.yag.ipc.User
-import com.github.yag.ipc.client.IdempotentRequest
-import com.github.yag.ipc.client.RequestType
-import com.github.yag.ipc.client.ThreadContext
-import com.github.yag.ipc.client.client
-import com.github.yag.ipc.protocol.StatusCode
-import com.github.yag.ipc.server.server
+import ketty.User
+import ketty.client.IdempotentRequest
+import ketty.client.RequestType
+import ketty.client.ThreadContext
+import ketty.client.client
+import ketty.protocol.StatusCode
+import ketty.server.server
 import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.Test

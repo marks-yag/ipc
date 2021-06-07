@@ -15,9 +15,9 @@
  * under the License.
  */
 
-package com.github.yag.ipc.common
+package ketty.common
 
-import com.github.yag.ipc.protocol.RequestHeader
+import ketty.protocol.RequestHeader
 import io.netty.buffer.ByteBufAllocator
 import io.netty.buffer.Unpooled
 import kotlin.test.Test

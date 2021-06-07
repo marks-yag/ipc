@@ -15,7 +15,7 @@
  * under the License.
  */
 
-package com.github.yag.ipc.common
+package ketty.common
 
 import com.github.yag.config.ConfigLoader
 import com.github.yag.config.Configuration

@@ -1,4 +1,4 @@
-namespace java com.github.yag.ipc
+namespace java ketty
 
 struct User {
 1: required string name

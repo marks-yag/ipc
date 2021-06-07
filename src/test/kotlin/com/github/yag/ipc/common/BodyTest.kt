@@ -15,14 +15,14 @@
  * under the License.
  */
 
-package com.github.yag.ipc.common
+package ketty.common
 
-import com.github.yag.ipc.User
-import com.github.yag.ipc.client.NonIdempotentRequest
-import com.github.yag.ipc.client.ThreadContext
-import com.github.yag.ipc.client.client
-import com.github.yag.ipc.protocol.StatusCode
-import com.github.yag.ipc.server.server
+import ketty.User
+import ketty.client.NonIdempotentRequest
+import ketty.client.ThreadContext
+import ketty.client.client
+import ketty.protocol.StatusCode
+import ketty.server.server
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

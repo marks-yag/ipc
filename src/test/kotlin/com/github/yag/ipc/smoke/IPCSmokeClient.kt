@@ -15,16 +15,16 @@
  * under the License.
  */
 
-package com.github.yag.ipc.smoke
+package ketty.smoke
 
 import com.codahale.metrics.ConsoleReporter
 import com.codahale.metrics.MetricRegistry
-import com.github.yag.ipc.common.CallType
-import com.github.yag.ipc.common.PlainBody
-import com.github.yag.ipc.common.Utils
-import com.github.yag.ipc.client.NonIdempotentRequest
-import com.github.yag.ipc.client.client
-import com.github.yag.ipc.common.isSuccessful
+import ketty.common.CallType
+import ketty.common.PlainBody
+import ketty.common.Utils
+import ketty.client.NonIdempotentRequest
+import ketty.client.client
+import ketty.common.isSuccessful
 import com.github.yag.retry.DefaultErrorHandler
 import com.github.yag.retry.ExponentialBackOffPolicy
 import com.github.yag.retry.Retry

@@ -15,14 +15,14 @@
  * under the License.
  */
 
-package com.github.yag.ipc.common
+package ketty.common
 
-import com.github.yag.ipc.client.NonIdempotentRequest
-import com.github.yag.ipc.client.ThreadContext
-import com.github.yag.ipc.client.client
-import com.github.yag.ipc.protocol.ResponseHeader
-import com.github.yag.ipc.protocol.StatusCode
-import com.github.yag.ipc.server.server
+import ketty.client.NonIdempotentRequest
+import ketty.client.ThreadContext
+import ketty.client.client
+import ketty.protocol.ResponseHeader
+import ketty.protocol.StatusCode
+import ketty.server.server
 import io.netty.buffer.Unpooled
 import java.net.ConnectException
 import java.util.concurrent.CountDownLatch
